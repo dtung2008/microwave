@@ -1,0 +1,23 @@
+# virtual environment
+.venv/
+
+# python build products
+__pycache__/
+*.pyc
+
+# regenerable figures (every lab regenerates its own PNGs; see VERIFY.md cleanup notes)
+lessons/**/lab/*.png
+
+# instructor solutions and answer keys — kept local only, never published
+lessons/**/lab/solutions/
+
+# matplotlib / OS noise
+*.png.tmp
+Thumbs.db
+
+# macOS
+.DS_Store
+
+# personal Claude dialog log (see .claude/hooks/record_session.js) — not shared
+sessions.md
+.claude/settings.local.json

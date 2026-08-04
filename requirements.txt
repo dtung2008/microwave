@@ -1,0 +1,20 @@
+# Microwave Engineering Foundations — course environment (Tier A, all 16 lectures)
+# Python 3.12, EXACTLY — numpy 1.26.4 has no wheels for 3.13+.
+
+numpy==1.26.4        # PINNED: Windows Smart App Control blocks numpy 2.5.x DLLs
+                     # (incident inherited from the robotics course). Also the reason
+                     # for the Python <= 3.12 requirement.
+scipy>=1.11,<1.14    # signal (filters, windows, stft), constants; numpy-1.26-compatible range
+matplotlib>=3.8,<3.11
+pandas               # scikit-rf dependency; also used for spec tables
+
+scikit-rf==1.13.0    # PINNED: the course workhorse; last 1.x release. NOT 2.0.x:
+                     # scikit-rf 2.0.0/2.0.1 crash on `import skrf` under numpy 1.26.4
+                     # (calibration.py uses np.typing.NDArray at import time; numpy 1.26
+                     # does not auto-expose numpy.typing — verified on this machine
+                     # 2026-08-04). Every lecture is tested against exactly this version.
+
+# Optional extras (per-lecture; labs degrade gracefully without them):
+# pysmithchart       # standalone Smith charts (lecture 3+; skrf built-ins usually suffice)
+# fdtd               # pure-Python FDTD field-visualization demos (lecture 5)
+# pyargus            # array DSP / DoA referee (lecture 16)

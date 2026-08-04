@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 1 · Principles — Microwave Systems Panorama</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 1 · Hours 1–2</div>
+  <h1>Microwave Systems Panorama<br>dB, Link Budgets, and the Radar Equation</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: NumPy + scikit-rf, live → homework: can this radar see the drone?</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer, <em>Microwave and RF Design</em> Vol. 1, ch. 1–2 (free) · Friis 1946 (2 pages)</p>
+</section>
+
+<!-- 2 · the same machine -->
+<section class="slide">
+  <div class="kicker">1.1 Why this course exists</div>
+  <h2>All of these are the same machine</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box"><p><em class="term">Cell tower</em></p><p class="small muted">energy out, spread by space, dug out of noise</p></div>
+    <div class="box"><p><em class="term">WiFi router</em></p><p class="small muted">the 2.4 GHz plumbing inside your laptop</p></div>
+    <div class="box"><p><em class="term">Satellite link</em></p><p class="small muted">the longest budgets ever closed</p></div>
+    <div class="box"><p><em class="term">Airport radar</em></p><p class="small muted">the echo pays the spreading toll twice</p></div>
+    <div class="box"><p><em class="term">77 GHz car radar</em></p><p class="small muted">collision avoidance on a chip — lecture 15</p></div>
+    <div class="box" style="background:#e8f0fe"><p class="accent big">source → space → noise → receiver</p><p class="small muted">different numbers, same physics</p></div>
+  </div>
+  <div class="box rule"><p>This course: the passive plumbing (L2–9) → the receiver (L10–12) →
+    <em class="term">detection systems</em> — aircraft, missiles, drones (L13–16).</p></div>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why this course exists</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">At microwave frequencies, the wire is a component.</em><br>
+      <span class="muted">When size ≈ wavelength, Kirchhoff stops being the truth. Today you compute where.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">dB is the native language — and it has a grammar.</em><br>
+      <span class="muted">Budgets become sums you can audit at 2 a.m. — if every number carries its unit.</span></li>
+    <li><em class="term">The radar equation is Friis folded back on itself.</em><br>
+      <span class="muted">Its R⁴ prices every detection: drone, missile, airliner. Today ends with all three priced.</span></li>
+  </ol>
+</section>
+
+<!-- 4 · spectrum ruler -->
+<section class="slide">
+  <div class="kicker">1.2 The frequency landscape</div>
+  <h2>Who lives where — detection systems as anchor tenants</h2>
+  <svg viewBox="0 0 760 210" width="100%">
+    <line x1="30" y1="120" x2="730" y2="120" stroke="#1a1f2b" stroke-width="3"/>
+    <g font-size="15" fill="#1a1f2b" text-anchor="middle">
+      <line x1="60"  y1="112" x2="60"  y2="128" stroke="#1a1f2b" stroke-width="2"/><text x="60"  y="150">1 GHz</text>
+      <line x1="200" y1="112" x2="200" y2="128" stroke="#1a1f2b" stroke-width="2"/><text x="200" y="150">3 GHz</text>
+      <line x1="340" y1="112" x2="340" y2="128" stroke="#1a1f2b" stroke-width="2"/><text x="340" y="150">10 GHz</text>
+      <line x1="480" y1="112" x2="480" y2="128" stroke="#1a1f2b" stroke-width="2"/><text x="480" y="150">30 GHz</text>
+      <line x1="620" y1="112" x2="620" y2="128" stroke="#1a1f2b" stroke-width="2"/><text x="620" y="150">100 GHz</text>
+    </g>
+    <g font-size="14" text-anchor="middle">
+      <rect x="35"  y="55" width="90"  height="34" rx="8" fill="#e8f0fe"/><text x="80"  y="77">L: surveillance</text>
+      <rect x="140" y="55" width="120" height="34" rx="8" fill="#e8f0fe"/><text x="200" y="77">S: airport · WiFi</text>
+      <rect x="285" y="55" width="115" height="34" rx="8" fill="#dbe8ff"/><text x="342" y="77" font-weight="700">X: our radar</text>
+      <rect x="425" y="55" width="110" height="34" rx="8" fill="#e8f0fe"/><text x="480" y="77">K/Ka: satcom</text>
+      <rect x="560" y="55" width="130" height="34" rx="8" fill="#fdecea"/><text x="625" y="77">W: 77 GHz cars</text>
+    </g>
+    <g font-size="14" fill="#5b6472" text-anchor="middle">
+      <text x="80"  y="185">λ ≈ 20 cm</text>
+      <text x="342" y="185">λ = 3 cm</text>
+      <text x="625" y="185">λ ≈ 4 mm</text>
+    </g>
+  </svg>
+  <div class="box rule"><p>The trade down the ruler: higher f buys <em class="term">smaller hardware, narrower beams</em> —
+    and pays in <em class="term">atmospheric loss, cost, power</em>. Every radar picks its band by this trade.</p></div>
+</section>
+
+<!-- 5 · the lambda argument -->
+<section class="slide">
+  <div class="kicker">1.2 The λ argument</div>
+  <h2>When does a wire stop being a wire?</h2>
+  <div class="cols">
+    <div>
+      <p>One 3 cm PCB trace, measured in wavelengths (λ = c/f):</p>
+      <table style="font-size:2.6vh; margin-top:1.5vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.5vh 2vh">f</td><td style="padding:.5vh 2vh">λ</td><td style="padding:.5vh 2vh">trace / λ</td><td></td></tr>
+        <tr><td style="padding:.5vh 2vh">1 MHz</td><td style="padding:.5vh 2vh">300 m</td><td style="padding:.5vh 2vh">10⁻⁴</td><td class="muted small">a wire</td></tr>
+        <tr><td style="padding:.5vh 2vh">100 MHz</td><td style="padding:.5vh 2vh">3 m</td><td style="padding:.5vh 2vh">0.01</td><td class="muted small">still a wire</td></tr>
+        <tr style="background:#e8f0fe"><td style="padding:.5vh 2vh">2.4 GHz</td><td style="padding:.5vh 2vh">12.5 cm</td><td style="padding:.5vh 2vh">0.24</td><td class="small"><em class="term">a component</em></td></tr>
+        <tr><td style="padding:.5vh 2vh">10 GHz</td><td style="padding:.5vh 2vh">3 cm</td><td style="padding:.5vh 2vh">1.0</td><td class="muted small">an antenna</td></tr>
+        <tr><td style="padding:.5vh 2vh">77 GHz</td><td style="padding:.5vh 2vh">3.9 mm</td><td style="padding:.5vh 2vh">7.7</td><td class="muted small">a system</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box rule"><p><em class="term">Rule of thumb:</em> distributed effects matter beyond
+        <span class="accent">~λ/10</span>. Past that line, lecture 2's transmission lines are the truth.</p></div>
+      <div class="box"><p class="small">"Microwave" ≈ 300 MHz–300 GHz by convention — but the real
+        criterion is λ/10 against <em>your</em> geometry. A 10 m antenna tower at 30 MHz is doing
+        microwave engineering.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · dB definitions -->
+<section class="slide">
+  <div class="kicker">1.3 Decibels done right</div>
+  <h2>The course's arithmetic — five numbers to memorize</h2>
+  <div class="math">dB = 10·log₁₀(power ratio) &nbsp;·&nbsp; dBm = dB re 1 mW &nbsp;·&nbsp; dBi = gain re isotropic &nbsp;·&nbsp; dBsm = RCS re 1 m²</div>
+  <p class="small muted" style="text-align:center">(RCS = radar cross section — defined properly in hour 2)</p>
+  <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1.6vh; margin-top:2.2vh">
+    <div class="box" style="text-align:center"><p class="big accent">+3 dB</p><p class="small muted">= ×2</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">+10 dB</p><p class="small muted">= ×10</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">−3 dB</p><p class="small muted">= ×½</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">−174</p><p class="small muted">dBm/Hz: kT₀, the thermal floor</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">0 dBm</p><p class="small muted">= 1 mW</p></div>
+  </div>
+  <div class="box"><p>Everything else is sums: B = 1 MHz sits 60 dB above 1 Hz →
+    noise floor = −174 + 60 = <em class="term">−114 dBm</em>. (Hour 3 prints −113.98.)</p></div>
+</section>
+
+<!-- 7 · dB grammar -->
+<section class="slide">
+  <div class="kicker">1.3 Decibels done right</div>
+  <h2>The grammar — two legal moves and a felony</h2>
+  <div class="box rule">
+    <p>dBm + dB = dBm &nbsp; <span class="muted small">(power through a gain — legal)</span><br>
+       dBm − dBm = dB &nbsp; <span class="muted small">(two powers compared — legal, yields a ratio)</span></p>
+  </div>
+  <div class="box trap">
+    <p><em class="term">dBm + dBm = nonsense.</em> Physics does not multiply two powers.</p>
+  </div>
+  <div class="box">
+    <p class="small">War story: a satellite terminal, one spreadsheet cell — P<sub>tx</sub> entered in
+    dBW (dB re 1 watt), read as dBm. <em class="term">30 dB</em> — a factor of 1000 — hiding in plain sight,
+    found on the roof, not in review. This course's fix: the unit lives in the <em>name</em> —
+    <span class="mono">p_t_dbm</span>, <span class="mono">p_t_w</span>, <span class="mono">fspl_db</span>.
+    Hour 3 re-enacts this exact bug.</p>
+  </div>
+</section>
+
+<!-- 8 · Friis derivation -->
+<section class="slide">
+  <div class="kicker">1.4 The Friis transmission formula</div>
+  <h2>Spreading × aperture — derived in three steps</h2>
+  <div class="cols">
+    <div>
+      <ol>
+        <li>Isotropic spreading: density S = P<sub>t</sub>/4πR²</li>
+        <li>A real antenna concentrates: S = P<sub>t</sub>G<sub>t</sub>/4πR²</li>
+        <li>The receiver catches its aperture's worth:<br>
+          A<sub>e</sub> = G<sub>r</sub>λ²/4π &nbsp;→&nbsp; P<sub>r</sub> = S·A<sub>e</sub></li>
+      </ol>
+      <div class="math">P<sub>r</sub> = P<sub>t</sub> G<sub>t</sub> G<sub>r</sub> λ² / (4πR)²</div>
+      <p class="small muted">G = antenna gain (how much better than isotropic); A<sub>e</sub> = effective aperture, m². L13 proves A<sub>e</sub> = Gλ²/4π.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 400 260" width="100%">
+        <circle cx="60" cy="130" r="10" fill="#0f62fe"/>
+        <path d="M70 118 Q 150 70 330 92" fill="none" stroke="#0f62fe" stroke-width="2"/>
+        <path d="M70 142 Q 150 190 330 168" fill="none" stroke="#0f62fe" stroke-width="2"/>
+        <circle cx="60" cy="130" r="55" fill="none" stroke="#5b6472" stroke-dasharray="5 5"/>
+        <circle cx="60" cy="130" r="110" fill="none" stroke="#5b6472" stroke-dasharray="5 5"/>
+        <rect x="330" y="92" width="14" height="76" rx="4" fill="#1a1f2b"/>
+        <text x="35" y="105" font-size="14" fill="#0f62fe">P_t, G_t</text>
+        <text x="300" y="200" font-size="14">A_e = G_r λ²/4π</text>
+        <text x="150" y="245" font-size="14" fill="#5b6472">density falls as 1/R² — space itself is lossless</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Friis in dB -->
+<section class="slide">
+  <div class="kicker">1.4 The Friis transmission formula</div>
+  <h2>In dB, as engineers write it</h2>
+  <div class="math" style="font-size:4vh">
+    P<sub>r</sub>[dBm] = P<sub>t</sub>[dBm] + G<sub>t</sub>[dBi] + G<sub>r</sub>[dBi] − FSPL[dB]
+  </div>
+  <div class="box rule">
+    <p>FSPL (free-space path loss) = 20·log₁₀(4πRf/c) — and the anchor number:
+    <em class="term">FSPL(1 GHz, 1 km) = 92.45 dB.</em></p>
+  </div>
+  <div class="box trap">
+    <p><em class="term">The λ² is not space eating your signal.</em> Free space is lossless —
+    hour 3 measures it. The λ² lives in the <em>receive aperture</em>: fixed gain shrinks with
+    wavelength. Fix the dish size instead and higher f <em>improves</em> the link.</p>
+  </div>
+</section>
+
+<!-- 10 · worked budget -->
+<section class="slide">
+  <div class="kicker">1.4 The Friis transmission formula</div>
+  <h2>A budget is named, unit-carrying line items</h2>
+  <div class="cols">
+    <div>
+      <p style="margin-bottom:1vh">The homework's WiFi-class link at <em class="term">R = 50 m</em>:</p>
+      <table style="font-size:2.7vh; border-collapse:collapse">
+        <tr><td style="padding:.4vh 2vh">P_t</td><td style="text-align:right;padding:.4vh 2vh">+20.00</td><td class="muted small">dBm (100 mW, 2.4 GHz)</td></tr>
+        <tr><td style="padding:.4vh 2vh">G_t</td><td style="text-align:right;padding:.4vh 2vh">+6.00</td><td class="muted small">dBi</td></tr>
+        <tr><td style="padding:.4vh 2vh">G_r</td><td style="text-align:right;padding:.4vh 2vh">+2.00</td><td class="muted small">dBi</td></tr>
+        <tr><td style="padding:.4vh 2vh">FSPL</td><td style="text-align:right;padding:.4vh 2vh">−74.03</td><td class="muted small">dB</td></tr>
+        <tr style="border-top:2px solid #1a1f2b"><td style="padding:.4vh 2vh"><em class="term">P_r</em></td><td style="text-align:right;padding:.4vh 2vh"><em class="term">−46.03</em></td><td class="muted small">dBm</td></tr>
+      </table>
+    </div>
+    <div>
+      <table style="font-size:2.7vh; border-collapse:collapse">
+        <tr><td style="padding:.4vh 2vh">kT₀ floor</td><td style="text-align:right;padding:.4vh 2vh">−174</td><td class="muted small">dBm/Hz</td></tr>
+        <tr><td style="padding:.4vh 2vh">+10·log₁₀(20 MHz)</td><td style="text-align:right;padding:.4vh 2vh">+73.01</td><td class="muted small">dB</td></tr>
+        <tr><td style="padding:.4vh 2vh">+NF</td><td style="text-align:right;padding:.4vh 2vh">+7.00</td><td class="muted small">dB (noise figure)</td></tr>
+        <tr style="border-top:2px solid #1a1f2b"><td style="padding:.4vh 2vh">noise floor</td><td style="text-align:right;padding:.4vh 2vh">−93.96</td><td class="muted small">dBm</td></tr>
+        <tr><td style="padding:.4vh 2vh"><em class="term">SNR</em></td><td style="text-align:right;padding:.4vh 2vh"><em class="term">47.93</em></td><td class="muted small">dB (signal-to-noise ratio)</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:2vh">At 1 km: 21.91 dB — still comfortable. Hour 3 computes this twice, two ways.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>Microwave is where geometry is measured in wavelengths — the line is <em class="term">λ/10</em>, and you can compute it.</li>
+    <li>dB is a grammar: two legal moves, one felony — and the felony produces <em class="term">plausible numbers</em>.</li>
+    <li>Friis = spreading × aperture; <em class="term">92.45 dB</em> at (1 GHz, 1 km); the λ² lives in the antenna, not in space.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2 aims this machinery at a target that does not want to be seen.</p>
+</section>
+
+<!-- 12 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Noise, the Radar Equation,<br>and the Course Map</h1>
+  <p class="muted" style="margin-top:3vh">The floor the signal must beat · Friis folded back on itself · every block of the radar is a lecture</p>
+</section>
+
+<!-- 13 · noise floor -->
+<section class="slide">
+  <div class="kicker">2.1 The noise floor</div>
+  <h2>What the receiver is up against</h2>
+  <div class="math" style="font-size:4vh">N[dBm] = −174 + 10·log₁₀(B) + NF</div>
+  <ul>
+    <li>Every resistor at temperature T delivers <em class="term">kTB</em> of noise power (Johnson–Nyquist; fine print in L10).</li>
+    <li>At the IEEE reference T₀ = 290 K: kT₀ = <em class="term">−173.98 dBm/Hz</em>.</li>
+    <li><em class="term">NF (noise figure)</em>: the SNR your receiver steals, in dB. Paid once, off the top. Where it comes from — and how cascaded stages share blame — is lecture 10.</li>
+  </ul>
+  <div class="box rule">
+    <p><em class="term">Bandwidth is a tax:</em> every ×10 of B raises the floor 10 dB. But B also buys
+    information (comms) and range resolution (radar, L15: ΔR = c/2B). Two masters — homework Q4
+    makes you defend a choice.</p>
+  </div>
+</section>
+
+<!-- 14 · radar equation build -->
+<section class="slide">
+  <div class="kicker">2.2 The radar equation</div>
+  <h2>Five physical steps — watch the R² become R⁴</h2>
+  <div class="cols">
+    <div>
+      <ol class="small" style="font-size:2.5vh">
+        <li>Density at the target: P<sub>t</sub>G/4πR²</li>
+        <li>Target intercepts &amp; re-radiates: ×σ <span class="muted">(RCS, m²)</span></li>
+        <li><em class="term">The echo spreads back: ÷4πR² again</em></li>
+        <li>The dish catches A<sub>e</sub> = Gλ²/4π <span class="muted">(same dish — monostatic)</span></li>
+        <li>Real radars leak: ÷L <span class="muted">(system losses)</span></li>
+      </ol>
+      <div class="math">P<sub>r</sub> = P<sub>t</sub>G²λ²σ / ((4π)³R⁴L)</div>
+    </div>
+    <div>
+      <svg viewBox="0 0 400 250" width="100%">
+        <rect x="20" y="100" width="16" height="60" rx="4" fill="#1a1f2b"/>
+        <path d="M40 110 Q 190 60 340 105" fill="none" stroke="#0f62fe" stroke-width="2.5" marker-end="none"/>
+        <path d="M340 145 Q 190 200 40 150" fill="none" stroke="#b3261e" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <g transform="translate(348,125)">
+          <path d="M0 -14 L10 6 L-10 6 Z" fill="#5b6472"/>
+        </g>
+        <text x="60" y="70" font-size="14" fill="#0f62fe">out: 1/R² (Friis's first half)</text>
+        <text x="80" y="215" font-size="14" fill="#b3261e">back: 1/R² again — the target is a tiny transmitter</text>
+        <text x="330" y="100" font-size="14">σ</text>
+        <text x="10" y="90" font-size="14">one dish, gain G</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · Rmax and the fourth root -->
+<section class="slide">
+  <div class="kicker">2.2 The radar equation</div>
+  <h2>The inverse question — and the exponent that runs the course</h2>
+  <div class="math" style="font-size:3.6vh">
+    R<sub>max</sub> = [ P<sub>t</sub>G²λ²σ / ((4π)³ kT₀B·F·L·SNR<sub>min</sub>) ]<sup>1/4</sup>
+  </div>
+  <div class="box rule">
+    <p><em class="term">Everything enters at the fourth root.</em><br>
+    Double the range → pay <span class="accent">12.04 dB</span> (one-way: 6.02).<br>
+    Double the power → gain <span class="accent">19%</span> range (2<sup>1/4</sup> = 1.189).<br>
+    Cut σ by 4000× → lose only <span class="accent">7.95×</span> range.</p>
+  </div>
+  <p class="muted">Fourth roots make radar upgrades brutally expensive — and stealth merely
+  <em class="term">worthwhile</em>, not magical. The homework's Q2 lives here.</p>
+</section>
+
+<!-- 16 · RCS ladder -->
+<section class="slide">
+  <div class="kicker">2.2 Radar cross section</div>
+  <h2>σ is how a target scatters — not how big it is</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.7vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 2vh">target</td><td style="padding:.4vh 2vh">σ</td><td style="padding:.4vh 2vh">dBsm</td></tr>
+        <tr><td style="padding:.4vh 2vh">airliner</td><td style="padding:.4vh 2vh">≈ 40 m²</td><td style="padding:.4vh 2vh">+16</td></tr>
+        <tr><td style="padding:.4vh 2vh">fighter</td><td style="padding:.4vh 2vh">≈ 1 m²</td><td style="padding:.4vh 2vh">0</td></tr>
+        <tr style="background:#fdecea"><td style="padding:.4vh 2vh">small drone</td><td style="padding:.4vh 2vh">≈ 0.01 m²</td><td style="padding:.4vh 2vh">−20</td></tr>
+        <tr style="background:#fdecea"><td style="padding:.4vh 2vh">large bird</td><td style="padding:.4vh 2vh">≈ 0.01 m²</td><td style="padding:.4vh 2vh">−20</td></tr>
+      </table>
+    </div>
+    <div>
+      <ul>
+        <li>Swings wildly with <em class="term">aspect angle</em> and frequency — a fighter: 1 m² nose-on, 100 m² broadside.</li>
+        <li>Fluctuation, Swerling models, what "≈" hides: <em class="term">lecture 14</em>.</li>
+      </ul>
+      <div class="box trap">
+        <p><em class="term">The drone problem in one row:</em> a drone and a bird are the same size
+        in σ. Telling them apart is L15's micro-Doppler story — today we only ask whether we
+        can see it at all.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · course radar -->
+<section class="slide">
+  <div class="kicker">2.3 The course radar</div>
+  <h2>The instrument we will keep upgrading for 16 weeks</h2>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big">10 GHz</p><p class="small muted">X-band, λ = 3 cm</p></div>
+    <div class="box" style="text-align:center"><p class="big">10 kW</p><p class="small muted">transmit power</p></div>
+    <div class="box" style="text-align:center"><p class="big">33 dBi</p><p class="small muted">one dish, TX &amp; RX</p></div>
+    <div class="box" style="text-align:center"><p class="big">1 MHz</p><p class="small muted">bandwidth B</p></div>
+    <div class="box" style="text-align:center"><p class="big">3 dB</p><p class="small muted">noise figure</p></div>
+    <div class="box" style="text-align:center"><p class="big">6 dB</p><p class="small muted">system losses L</p></div>
+    <div class="box" style="text-align:center"><p class="big">13 dB</p><p class="small muted">SNR<sub>min</sub> (honest version: L14)</p></div>
+    <div class="box" style="text-align:center; background:#e8f0fe"><p class="big accent">−113.98</p><p class="small muted">dBm noise floor</p></div>
+  </div>
+  <p class="small muted" style="margin-top:2.5vh">Its receive chain is homework 10, its antenna is homework 13, its detection logic is homework 14, its waveform is homework 15, its collision-avoidance capstone is homework 16.</p>
+</section>
+
+<!-- 18 · one worked point -->
+<section class="slide">
+  <div class="kicker">2.3 The course radar</div>
+  <h2>One point, worked honestly — the fighter at 15 km</h2>
+  <table style="font-size:2.8vh; border-collapse:collapse; margin-top:1vh">
+    <tr><td style="padding:.4vh 2vh">P_t (10 kW)</td><td style="text-align:right;padding:.4vh 2vh">+70.00</td><td class="muted small">dBm</td></tr>
+    <tr><td style="padding:.4vh 2vh">+2G</td><td style="text-align:right;padding:.4vh 2vh">+66.00</td><td class="muted small">dB (the dish, used twice)</td></tr>
+    <tr><td style="padding:.4vh 2vh">+10log₁₀(λ²σ/(4π)³)</td><td style="text-align:right;padding:.4vh 2vh">−63.44</td><td class="muted small">dB (λ = 3 cm, σ = 1 m²)</td></tr>
+    <tr><td style="padding:.4vh 2vh">−40·log₁₀(R)</td><td style="text-align:right;padding:.4vh 2vh">−167.04</td><td class="muted small">dB (R = 15 km — <em>forty</em>, not twenty)</td></tr>
+    <tr><td style="padding:.4vh 2vh">−L</td><td style="text-align:right;padding:.4vh 2vh">−6.00</td><td class="muted small">dB</td></tr>
+    <tr style="border-top:2px solid #1a1f2b"><td style="padding:.4vh 2vh">P_r − floor(−113.98) − NF(3)</td><td style="text-align:right;padding:.4vh 2vh"><em class="term">SNR = 10.49</em></td><td class="muted small">dB</td></tr>
+  </table>
+  <div class="box rule"><p>10.49 dB &lt; the 13 dB bar → <em class="term">no detection at 15 km.</em>
+    The fighter's R<sub>max</sub> must be just inside 15 km — it is 12.98. Hour 3's round-trip check
+    (R<sub>max</sub> back through the forward equation → exactly 13.0000 dB) is this slide, automated.</p></div>
+</section>
+
+<!-- 19 · three customers -->
+<section class="slide">
+  <div class="kicker">2.3 The three customers</div>
+  <h2>The radar equation's verdict</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:2vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p><em class="term">airliner</em> · 40 m²</p><p class="big accent">32.65 km</p></div>
+    <div class="box" style="text-align:center"><p><em class="term">fighter</em> · 1 m²</p><p class="big accent">12.98 km</p></div>
+    <div class="box" style="text-align:center"><p><em class="term">drone</em> · 0.01 m²</p><p class="big accent">4.11 km</p></div>
+  </div>
+  <div class="box trap">
+    <p><em class="term">Can it see the airliner at 400 km, like en-route surveillance radars?</em><br>
+    (400/32.65)⁴ ≈ <span class="warn">22,500×</span> more power-aperture product. That is why
+    ARSR (air-route surveillance radar) antennas are the size of a house — the R⁴ tyranny in one number.</p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">War story: the 200 km fishing-vessel radar asked about jet-skis — σ down 23 dB, range quietly ÷3.8. Nobody lied; fourth roots don't care about marketing.</p>
+</section>
+
+<!-- 20 · course map -->
+<section class="slide">
+  <div class="kicker">2.4 The course map</div>
+  <h2>Every block of this radar is a lecture</h2>
+  <svg viewBox="0 0 780 240" width="100%">
+    <g font-size="13" text-anchor="middle">
+      <rect x="10"  y="40" width="80" height="44" rx="8" fill="#eef2f7"/><text x="50"  y="58">TX line</text><text x="50" y="76" fill="#0f62fe" font-weight="700">L2</text>
+      <rect x="100" y="40" width="80" height="44" rx="8" fill="#eef2f7"/><text x="140" y="58">matching</text><text x="140" y="76" fill="#0f62fe" font-weight="700">L3 · L6</text>
+      <rect x="190" y="40" width="80" height="44" rx="8" fill="#eef2f7"/><text x="230" y="58">S-params</text><text x="230" y="76" fill="#0f62fe" font-weight="700">L4</text>
+      <rect x="280" y="40" width="90" height="44" rx="8" fill="#eef2f7"/><text x="325" y="58">μstrip · guide</text><text x="325" y="76" fill="#0f62fe" font-weight="700">L5</text>
+      <rect x="380" y="40" width="80" height="44" rx="8" fill="#eef2f7"/><text x="420" y="58">couplers</text><text x="420" y="76" fill="#0f62fe" font-weight="700">L7</text>
+      <rect x="470" y="40" width="80" height="44" rx="8" fill="#eef2f7"/><text x="510" y="58">filters</text><text x="510" y="76" fill="#0f62fe" font-weight="700">L8–9</text>
+      <rect x="560" y="40" width="90" height="44" rx="8" fill="#dbe8ff"/><text x="605" y="58">antenna array</text><text x="605" y="76" fill="#0f62fe" font-weight="700">L13</text>
+      <rect x="560" y="140" width="90" height="44" rx="8" fill="#eef2f7"/><text x="605" y="158">LNA · noise</text><text x="605" y="176" fill="#0f62fe" font-weight="700">L10–11</text>
+      <rect x="470" y="140" width="80" height="44" rx="8" fill="#eef2f7"/><text x="510" y="158">mixer</text><text x="510" y="176" fill="#0f62fe" font-weight="700">L12</text>
+      <rect x="280" y="140" width="180" height="44" rx="8" fill="#fdecea"/><text x="370" y="158">detection · FMCW · Doppler</text><text x="370" y="176" fill="#b3261e" font-weight="700">L14 · L15</text>
+      <rect x="80"  y="140" width="190" height="44" rx="8" fill="#fdecea"/><text x="175" y="158">beamforming · avoid</text><text x="175" y="176" fill="#b3261e" font-weight="700">L16</text>
+      <g stroke="#5b6472" stroke-width="2" fill="none">
+        <line x1="90"  y1="62" x2="100" y2="62"/><line x1="180" y1="62" x2="190" y2="62"/>
+        <line x1="270" y1="62" x2="280" y2="62"/><line x1="370" y1="62" x2="380" y2="62"/>
+        <line x1="460" y1="62" x2="470" y2="62"/><line x1="550" y1="62" x2="560" y2="62"/>
+        <line x1="605" y1="84" x2="605" y2="140"/>
+        <line x1="560" y1="162" x2="550" y2="162"/><line x1="470" y1="162" x2="460" y2="162"/>
+        <line x1="280" y1="162" x2="270" y2="162"/>
+      </g>
+      <text x="700" y="115" font-size="15" fill="#5b6472">echo ⇅</text>
+    </g>
+  </svg>
+  <div class="box rule"><p class="small">Most microwave courses stop at the amplifier; most radar courses
+    assume the microwave parts arrive by mail. This course refuses the split — the detection thread is
+    <em>why</em> the plumbing matters.</p></div>
+</section>
+
+<!-- 21 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in three sentences</h2>
+  <ul class="big">
+    <li>The floor is <em class="term">−174 + 10log₁₀B + NF</em>, and it is not negotiable.</li>
+    <li>The radar equation is Friis twice with σ in the middle — and its <em class="term">fourth root</em> prices every improvement.</li>
+    <li>The course radar: airliner <em class="term">32.65 km</em>, fighter <em class="term">12.98 km</em>, drone <em class="term">4.11 km</em> — and you know why.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 builds the machine that computed those numbers — then breaks it with one unlabeled unit.</p>
+</section>
+
+<!-- 22 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in NumPy and scikit-rf — every claim becomes a printed number</h2>
+  <ul>
+    <li>The λ table — a 3 cm trace from wire to antenna, printed</li>
+    <li>Friis two ways — dB chain vs watts chain, <em class="term">MUST agree to 0.0e+00 dB</em> (the homework's referee principle)</li>
+    <li>The three customers — 32.65 / 12.98 / 4.11 km, three lines of code</li>
+    <li>First contact with scikit-rf — a real S-parameter file, and one honest lesson: <span class="mono">Freespace</span> is <em class="term">lossless</em></li>
+    <li>The deliberate bug — 40 dBW into a dBm slot: the drone "detected" at 23.09 km</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> —
+  Q1 (six vs twelve) and Q2 (what stealth buys) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 1 · Microwave Systems Panorama · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>
