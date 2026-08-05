@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 6 · Principles — Broadband Matching &amp; Resonators</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 6 · Hours 1–2</div>
+  <h1>Broadband Matching<br>&amp; Resonators</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: the Chebyshev designer, the Bode–Fano budget, the Q-meter → homework: the impossible spec</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer Vol. 3 ch. 7 (free) · Pozar §§5.5–5.9, ch. 6 · NPL MAT 58 (free)</p>
+</section>
+
+<!-- 2 · the client's email -->
+<section class="slide">
+  <div class="kicker">1.1 The job</div>
+  <h2>A client email arrives</h2>
+  <div class="box" style="font-style:italic">
+    <p>"We need our 12.5 Ω power-amplifier termination matched to the 50 Ω world —
+    20 dB return loss, 2 to 4 GHz, full octave. Also attaching three resonator sweeps
+    from our bench; please report their Qs. Timeline is tight."</p>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:2.2vh">
+    <div class="box" style="text-align:center"><p class="big accent">4 : 1</p><p class="small muted">50 → 12.5 Ω impedance ratio</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">20 dB</p><p class="small muted">RL (return loss) = −20·log₁₀|Γ| → |Γ| ≤ 0.1</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">66.7%</p><p class="small muted">fractional bandwidth (an octave: Δf/f₀ = 2/3)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">3 × Q</p><p class="small muted">three swept resonators to qualify (Q = quality factor)</p></div>
+  </div>
+  <div class="box rule"><p>Three hidden questions: is the spec <em class="term">physical</em>? (hour 2) ·
+    <em class="term">design the match</em> (hour 1) · read the resonator sweeps <em class="term">honestly</em> (hour 2).</p></div>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why this lecture exists</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">Bandwidth is bought with sections.</em><br>
+      <span class="muted">Split one big impedance step into N small ones; split cleverly and each section buys ~11.4 dB.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">There is a ceiling, and it is a theorem.</em><br>
+      <span class="muted">Bode–Fano prices the best any network can do — from the load alone. Feasibility before design.</span></li>
+    <li><em class="term">A resonator's measured Q is not its Q.</em><br>
+      <span class="muted">The 3-dB width gives the loaded Q; the coupling hides the real one. This week's correction: ×25.</span></li>
+  </ol>
+</section>
+
+<!-- 4 · one lambda/4 dies -->
+<section class="slide">
+  <div class="kicker">1.1 The single-section baseline</div>
+  <h2>One λ/4 section is a 17% device on a 67% job</h2>
+  <div class="cols">
+    <div>
+      <p>Lecture 2's fix: Z₁ = √(Z₀Z<sub>L</sub>) = √(50·12.5) = <em class="term">25 Ω</em>, a quarter wave at f₀ = 3 GHz.</p>
+      <ul style="margin-top:1.5vh">
+        <li>At f₀: perfect, by construction.</li>
+        <li>At the band edges (2, 4 GHz): |Γ| = 0.351 → <em class="term">9.09 dB</em> against a 20 dB spec.</li>
+        <li>Measured 20-dB bandwidth: <em class="term">17.1%</em>. The client wants <em class="term">66.7%</em>.</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="0 0 400 250" width="100%">
+        <line x1="45" y1="210" x2="380" y2="210" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="45" y1="210" x2="45" y2="20" stroke="#1a1f2b" stroke-width="2"/>
+        <path d="M45 190 Q 100 188 150 155 Q 212 30 274 155 Q 324 188 380 190" fill="none" stroke="#0f62fe" stroke-width="3"/>
+        <line x1="45" y1="90" x2="380" y2="90" stroke="#b3261e" stroke-width="2" stroke-dasharray="6 4"/>
+        <rect x="129" y="20" width="166" height="190" fill="#0f62fe" opacity="0.07"/>
+        <text x="200" y="235" font-size="14" text-anchor="middle">f (GHz): 2 — 3 — 4</text>
+        <text x="55" y="82" font-size="13" fill="#b3261e">20 dB spec</text>
+        <text x="212" y="55" font-size="13" text-anchor="middle" fill="#0f62fe">RL of one section</text>
+        <text x="150" y="200" font-size="12" fill="#5b6472">9.09 dB at the edges</text>
+        <text x="25" y="120" font-size="13" fill="#5b6472" transform="rotate(-90 25 120)">RL (dB)</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box rule"><p>The match is a <em class="term">resonance</em> (lecture 3's warning, now priced).
+    Widening it = adding sections. Choosing the split = the rest of this hour.</p></div>
+</section>
+
+<!-- 5 · small reflections setup -->
+<section class="slide">
+  <div class="kicker">1.2 Theory of small reflections</div>
+  <h2>N sections, N+1 junctions, N+1 partial reflections</h2>
+  <svg viewBox="0 0 760 180" width="100%">
+    <g font-size="14" text-anchor="middle">
+      <rect x="20"  y="60" width="120" height="46" rx="4" fill="#eef2f7"/><text x="80" y="88">Z₀ = 50</text>
+      <rect x="140" y="60" width="110" height="46" rx="4" fill="#dbe8ff"/><text x="195" y="88">Z₁</text>
+      <rect x="250" y="60" width="110" height="46" rx="4" fill="#c9ddff"/><text x="305" y="88">Z₂</text>
+      <text x="395" y="88" fill="#5b6472">…</text>
+      <rect x="430" y="60" width="110" height="46" rx="4" fill="#a9c8ff"/><text x="485" y="88">Z<tspan baseline-shift="sub" font-size="10">N</tspan></text>
+      <rect x="540" y="60" width="120" height="46" rx="4" fill="#eef2f7"/><text x="600" y="88">Z_L = 12.5</text>
+      <g fill="#b3261e" font-size="13">
+        <line x1="140" y1="40" x2="140" y2="125" stroke="#b3261e" stroke-width="2"/><text x="140" y="145">Γ₀</text>
+        <line x1="250" y1="40" x2="250" y2="125" stroke="#b3261e" stroke-width="2"/><text x="250" y="145">Γ₁</text>
+        <line x1="360" y1="40" x2="360" y2="125" stroke="#b3261e" stroke-width="2"/><text x="360" y="145">Γ₂</text>
+        <line x1="540" y1="40" x2="540" y2="125" stroke="#b3261e" stroke-width="2"/><text x="540" y="145">Γ<tspan baseline-shift="sub" font-size="10">N</tspan></text>
+      </g>
+      <text x="195" y="45" font-size="12" fill="#5b6472">each section θ = (π/2)(f/f₀)</text>
+    </g>
+  </svg>
+  <div class="math">Γ<sub>k</sub> = (Z<sub>k+1</sub> − Z<sub>k</sub>)/(Z<sub>k+1</sub> + Z<sub>k</sub>)
+    &nbsp;&nbsp;·&nbsp;&nbsp; θ = βℓ = electrical length of one section</div>
+  <div class="box rule"><p><em class="term">The whole design freedom of this hour is the choice of the Γ<sub>k</sub></em> —
+    which is the choice of the impedance steps.</p></div>
+</section>
+
+<!-- 6 · small reflections: sum and its sin -->
+<section class="slide">
+  <div class="kicker">1.2 Theory of small reflections</div>
+  <h2>Keep the first bounce, drop the rattles</h2>
+  <div class="math">Γ(θ) ≈ Γ₀ + Γ₁e<sup>−2jθ</sup> + Γ₂e<sup>−4jθ</sup> + … + Γ<sub>N</sub>e<sup>−2jNθ</sup></div>
+  <div class="box rule">
+    <p>Symmetric designs (Γ<sub>k</sub> = Γ<sub>N−k</sub>) collapse to a cosine series:<br>
+    <span class="math inline">Γ(θ) = 2e<sup>−jNθ</sup>[Γ₀cos Nθ + Γ₁cos(N−2)θ + …]</span>
+    <span class="muted small">(even-N middle term counts once)</span></p>
+  </div>
+  <div class="box trap">
+    <p><em class="term">What got dropped:</em> every multiple-bounce product Γ<sub>i</sub>Γ<sub>j</sub>… —
+    a first-order theory whose error is set by the <em>total</em> ratio, not by N.
+    For Z<sub>L</sub>/Z₀ = 4 the total is ½·ln 4 = 0.69 — <em class="term">not small</em>.
+    This theory will design our transformer, then lie about its ripple. Measurably. (Slide 13.)</p>
+  </div>
+</section>
+
+<!-- 7 · binomial design -->
+<section class="slide">
+  <div class="kicker">1.3 Binomial — maximally flat</div>
+  <h2>All zeros at band center</h2>
+  <div class="math">Γ(θ) = A(1 + e<sup>−2jθ</sup>)<sup>N</sup> &nbsp;→&nbsp; |Γ| = 2<sup>N</sup>|A||cos θ|<sup>N</sup>,
+    &nbsp; A = 2<sup>−(N+1)</sup>ln(Z<sub>L</sub>/Z₀)</div>
+  <div class="box rule">
+    <p>Design rule — each step takes a binomial coefficient's share of the log ratio:<br>
+    <span class="math inline">ln(Z<sub>k+1</sub>/Z<sub>k</sub>) = 2<sup>−N</sup>·C<sup>N</sup><sub>k</sub>·ln(Z<sub>L</sub>/Z₀)</span></p>
+  </div>
+  <div class="cols">
+    <div>
+      <p class="small" style="margin-top:1vh">Our job, worked:</p>
+      <table style="font-size:2.4vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 1.6vh">N</td><td style="padding:.4vh 1.6vh">sections (Ω)</td><td style="padding:.4vh 1.6vh">theory edge RL</td><td style="padding:.4vh 1.6vh">exact sweep</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">2</td><td style="padding:.4vh 1.6vh">35.36 · 17.68</td><td style="padding:.4vh 1.6vh">15.22 dB</td><td style="padding:.4vh 1.6vh" class="warn">14.69 — fails</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">3</td><td style="padding:.4vh 1.6vh">42.04 · 25.00 · 14.87</td><td style="padding:.4vh 1.6vh">21.25 dB</td><td style="padding:.4vh 1.6vh">20.42 — squeaks by</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box"><p class="small">The binomial's personality: superb at f₀,
+      spendthrift at the edges — its polynomial zeros are all stacked where we needed
+      exactly one. A "20 dB <em>everywhere</em>" spec rewards holding the worst point.
+      That is an equal-ripple job →</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Chebyshev polynomial -->
+<section class="slide">
+  <div class="kicker">1.4 Chebyshev — equal ripple</div>
+  <h2>The polynomial that ripples, then explodes</h2>
+  <div class="cols">
+    <div>
+      <div class="math" style="text-align:left">T<sub>N</sub>(cos φ) = cos Nφ &nbsp;<span class="muted small">(inside |x| ≤ 1)</span><br>
+      T<sub>N</sub>(x) = cosh(N·arccosh x) &nbsp;<span class="muted small">(outside)</span></div>
+      <p class="small muted">Recursion for the table: T<sub>N+1</sub> = 2x·T<sub>N</sub> − T<sub>N−1</sub>;
+        at x = 2: &nbsp;2, 7, 26, 97, 362…</p>
+      <div class="box rule"><p>Substitute x = sec θ<sub>m</sub>·cos θ: in-band the argument stays
+        inside [−1,1] → ripple ≤ 1; out of band it explodes. θ<sub>m</sub> = band-edge
+        electrical length.</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 400 250" width="100%">
+        <line x1="30" y1="125" x2="380" y2="125" stroke="#5b6472" stroke-width="1.5"/>
+        <line x1="30" y1="105" x2="380" y2="105" stroke="#5b6472" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="30" y1="145" x2="380" y2="145" stroke="#5b6472" stroke-width="1" stroke-dasharray="4 4"/>
+        <path d="M60 30 Q 80 105 110 145 Q 140 185 170 125 Q 200 65 230 105 Q 260 145 290 145 Q 320 145 350 30"
+              fill="none" stroke="#0f62fe" stroke-width="3" transform="translate(0,10) scale(1,0.9)"/>
+        <text x="205" y="240" font-size="14" text-anchor="middle">x = sec θₘ·cos θ sweeps the band</text>
+        <text x="90" y="25" font-size="13" fill="#0f62fe">explodes out of band</text>
+        <text x="330" y="25" font-size="13" fill="#0f62fe" text-anchor="end">…both sides</text>
+        <text x="205" y="98" font-size="13" fill="#5b6472" text-anchor="middle">±1: the equal ripple</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Chebyshev design equations -->
+<section class="slide">
+  <div class="kicker">1.4 Chebyshev — equal ripple</div>
+  <h2>The design statement — and this octave's clean number</h2>
+  <div class="math">Γ(θ) = Γ<sub>m</sub>·e<sup>−jNθ</sup>·T<sub>N</sub>(sec θ<sub>m</sub>·cos θ)
+    &nbsp;&nbsp;with&nbsp;&nbsp; Γ<sub>m</sub>·T<sub>N</sub>(sec θ<sub>m</sub>) = ½|ln(Z<sub>L</sub>/Z₀)|</div>
+  <p class="small muted" style="text-align:center">Γ<sub>m</sub> = in-band ripple (the worst |Γ| the design ever shows in band)</p>
+  <div class="box rule">
+    <p>For the client's octave: θ<sub>m</sub> = (π/2)(f₁/f₀) = <em class="term">60°</em>, so
+    <em class="term">sec θ<sub>m</sub> = 2</em>. Given N, the ripple is fixed:
+    <span class="math inline">Γ<sub>m</sub> = ½|ln(1/4)| / T<sub>N</sub>(2) = 0.693/T<sub>N</sub>(2)</span></p>
+  </div>
+  <div class="box">
+    <p class="small">Same equation read backwards = bandwidth from ripple: pick Γ<sub>m</sub>, solve
+    T<sub>N</sub>(sec θ<sub>m</sub>) for θ<sub>m</sub>. One formula, both directions of the trade.</p>
+  </div>
+</section>
+
+<!-- 10 · the N table -->
+<section class="slide">
+  <div class="kicker">1.4 Chebyshev — equal ripple</div>
+  <h2>The bandwidth-vs-N trade, priced</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.8vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.5vh 2vh">N</td><td style="padding:.5vh 2vh">T<sub>N</sub>(2)</td><td style="padding:.5vh 2vh">ripple Γ<sub>m</sub></td><td style="padding:.5vh 2vh">theory RL</td></tr>
+        <tr><td style="padding:.5vh 2vh">1</td><td style="padding:.5vh 2vh">2</td><td style="padding:.5vh 2vh">0.3466</td><td style="padding:.5vh 2vh">9.20 dB</td></tr>
+        <tr style="background:#e8f0fe"><td style="padding:.5vh 2vh">2</td><td style="padding:.5vh 2vh">7</td><td style="padding:.5vh 2vh">0.0990</td><td style="padding:.5vh 2vh"><em class="term">20.09 dB</em></td></tr>
+        <tr><td style="padding:.5vh 2vh">3</td><td style="padding:.5vh 2vh">26</td><td style="padding:.5vh 2vh">0.0267</td><td style="padding:.5vh 2vh">31.48 dB</td></tr>
+        <tr><td style="padding:.5vh 2vh">4</td><td style="padding:.5vh 2vh">97</td><td style="padding:.5vh 2vh">0.0071</td><td style="padding:.5vh 2vh">42.92 dB</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box rule"><p>T<sub>N</sub>(2) = cosh(N·arccosh 2) ≈ ½e<sup>1.317N</sup> —
+        <em class="term">each section buys ~11.44 dB</em> of in-band return loss, asymptotically.</p></div>
+      <div class="box"><p class="small">vs binomial at N=3: 21.25 dB theory. Chebyshev: 31.48.
+        The <em class="term">equal-ripple dividend</em> ≈ 10 dB at the same hardware.</p></div>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:2vh">Theory says N=2 clears the client's 20 dB — by 0.09 dB. Remember this row.</p>
+</section>
+
+<!-- 11 · the recursion worked -->
+<section class="slide">
+  <div class="kicker">1.4 Chebyshev — the recursion</div>
+  <h2>From ripple to copper: N=2 worked in full</h2>
+  <div class="box rule">
+    <p class="small">Expansion identities (N ≤ 3 — homework accepts these or a numeric projection):<br>
+    T₂(s·cos θ) = s²(1 + cos 2θ) − 1 &nbsp;·&nbsp;
+    T₃(s·cos θ) = s³(cos 3θ + 3cos θ) − 3s·cos θ &nbsp; <span class="muted">(s = sec θ<sub>m</sub>)</span></p>
+  </div>
+  <div class="cols">
+    <div>
+      <p class="small">Match to 2[Γ₀cos 2θ + ½Γ₁] term by term (middle term once!):</p>
+      <ul class="small">
+        <li>2Γ₀ = Γ<sub>m</sub>·sec²θ<sub>m</sub> → Γ₀ = 0.198</li>
+        <li>Γ₁ = Γ<sub>m</sub>(sec²θ<sub>m</sub> − 1) → Γ₁ = 0.297</li>
+        <li>ln(Z<sub>k+1</sub>/Z<sub>k</sub>) = 2Γ<sub>k</sub>, <em class="term">signs DOWN</em> for 50 → 12.5</li>
+      </ul>
+      <div class="math" style="text-align:left; font-size:2.9vh">Z₁ = 50·e<sup>−0.396</sup> = <em class="term">33.65 Ω</em>,&nbsp;
+        Z₂ = <em class="term">18.57 Ω</em></div>
+    </div>
+    <div>
+      <div class="box"><p class="small">Endpoint check: 18.57·e<sup>−0.396</sup> = 12.50 ✓</p></div>
+      <div class="box rule"><p class="small"><em class="term">The invariant that survives every slip:</em><br>
+        2·ΣΓ<sub>k</sub> = ln(Z<sub>L</sub>/Z₀) = −1.386, exactly.<br>
+        And symmetry: Γ<sub>k</sub> = Γ<sub>N−k</sub>.</p></div>
+      <p class="small muted" style="margin-top:1.5vh">N=3 by the same recipe: [40.40, 25.00, 15.47] Ω —
+        odd-N middle section is always √(Z₀Z<sub>L</sub>) = 25.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · the honest gap -->
+<section class="slide">
+  <div class="kicker">1.4 The honest gap</div>
+  <h2>The theory that designed it says 20.09. The sweep says 18.98.</h2>
+  <table style="font-size:2.7vh; border-collapse:collapse">
+    <tr class="muted small"><td style="padding:.4vh 2vh">N</td><td style="padding:.4vh 2vh">theory RL</td><td style="padding:.4vh 2vh">exact swept worst in-band</td><td style="padding:.4vh 2vh">gap</td><td style="padding:.4vh 2vh">verdict vs 20 dB</td></tr>
+    <tr><td style="padding:.4vh 2vh">1</td><td style="padding:.4vh 2vh">9.20</td><td style="padding:.4vh 2vh">9.09</td><td style="padding:.4vh 2vh">+0.11</td><td style="padding:.4vh 2vh" class="muted">—</td></tr>
+    <tr style="background:#fdecea"><td style="padding:.4vh 2vh">2</td><td style="padding:.4vh 2vh">20.09</td><td style="padding:.4vh 2vh"><em class="term">18.98</em></td><td style="padding:.4vh 2vh">+1.10</td><td style="padding:.4vh 2vh" class="warn"><em class="term">MISSES</em></td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.4vh 2vh">3</td><td style="padding:.4vh 2vh">31.48</td><td style="padding:.4vh 2vh">29.44</td><td style="padding:.4vh 2vh">+2.04</td><td style="padding:.4vh 2vh"><em class="term">meets, with margin</em></td></tr>
+    <tr><td style="padding:.4vh 2vh">4</td><td style="padding:.4vh 2vh">42.92</td><td style="padding:.4vh 2vh">39.22</td><td style="padding:.4vh 2vh">+3.70</td><td style="padding:.4vh 2vh" class="muted">overkill</td></tr>
+  </table>
+  <div class="box trap">
+    <p><em class="term">The recursion is a designer; the sweep is the verdict.</em> At a 4:1 ratio
+    the dropped Γ<sub>i</sub>Γ<sub>j</sub> products cost a full dB — the honest minimum is
+    <em class="term">N = 3</em>. Why the gap <em>grows</em> with N while every step shrinks: homework Q4.</p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">War story: the 16:1 textbook-table transformer that measured 3 dB
+    shy of the table — a week spent blaming the machinist. The table was the approximation.</p>
+</section>
+
+<!-- 13 · tapered lines -->
+<section class="slide">
+  <div class="kicker">1.5 Tapered lines — in one picture</div>
+  <h2>N → ∞: the staircase becomes a taper</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 380 230" width="100%">
+        <path d="M20 40 L90 40 L90 70 L150 70 L150 105 L210 105 L210 140 L270 140 L270 170 L350 170"
+              fill="none" stroke="#5b6472" stroke-width="2.5"/>
+        <path d="M20 50 C 150 55 240 150 350 160" fill="none" stroke="#0f62fe" stroke-width="3"/>
+        <text x="30" y="30" font-size="14" fill="#5b6472">Z(z): steps…</text>
+        <text x="240" y="120" font-size="14" fill="#0f62fe">…dissolve into Z(z) continuous</text>
+        <text x="185" y="215" font-size="14" text-anchor="middle" fill="#5b6472">z along the line →</text>
+        <text x="20" y="195" font-size="13" fill="#5b6472">50 Ω → 12.5 Ω</text>
+      </svg>
+    </div>
+    <div>
+      <div class="math" style="text-align:left; font-size:2.7vh">Γ ≈ ½∫e<sup>−2jβz</sup>·d(ln Z)/dz·dz</div>
+      <p class="small muted">|Γ(f)| is the Fourier spectrum of the impedance slope — window-function
+        intuition, three lectures before lecture 13 needs it.</p>
+      <ul class="small" style="margin-top:1vh">
+        <li><em class="term">exponential</em>: constant slope — simple, high sidelobes</li>
+        <li><em class="term">triangular</em>: smooth ends — lower sidelobes, longer</li>
+        <li><em class="term">Klopfenstein</em>: the Chebyshev limit — shortest for a given ripple</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box rule"><p class="small">The taper's virtue: above its cutoff it <em class="term">never stops
+    working</em> — a high-pass match (multisections are band-pass). Its price: length — ~λ/2 at the lowest
+    frequency vs three λ/4 at f₀. Mathematics: Pozar §5.8, assigned, not lectured.</p></div>
+</section>
+
+<!-- 14 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>One λ/4 section: <em class="term">17%</em> device, <em class="term">67%</em> job — bandwidth is bought with sections.</li>
+    <li>Small reflections turns section choice into polynomial choice: binomial hoards margin at center; Chebyshev spends evenly, <em class="term">~11.4 dB per section</em>.</li>
+    <li>The theory under-reports ripple at 4:1 — N=2 promises 20.09, measures <em class="term">18.98</em>. The sweep signs the datasheet; the honest answer is N=3.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2: the ceiling above all matching — then the resonances we keep on purpose.</p>
+</section>
+
+<!-- 15 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>The Bode–Fano Ceiling,<br>and Resonators</h1>
+  <p class="muted" style="margin-top:3vh">A theorem that prices every match · every resonator is an RLC near resonance · Q_u, Q_L, and the coupling that hides between them</p>
+</section>
+
+<!-- 16 · Bode-Fano statement -->
+<section class="slide">
+  <div class="kicker">2.1 The Bode–Fano criterion</div>
+  <h2>The load issues a budget — spendable anywhere, capped</h2>
+  <div class="math" style="font-size:4vh">∫₀<sup>∞</sup> ln(1/|Γ(ω)|) dω ≤ π/(RC)</div>
+  <p class="small muted" style="text-align:center">for a parallel R-C load (R = 12.5 Ω here, C = the pad capacitance);
+    ln(1/|Γ|) = "match quality" — large where the match is good</p>
+  <div class="cols">
+    <div>
+      <div class="box rule"><p>Spend it flat over Δω, nothing outside (|Γ| = 1):<br>
+        <span class="math inline">Δω·ln(1/Γ<sub>m</sub>) ≤ π/(RC)</span><br>
+        <span class="small muted">band × depth ≤ budget — every factor is one word of the client's email</span></p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 380 190" width="100%">
+        <line x1="35" y1="160" x2="360" y2="160" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="35" y1="160" x2="35" y2="25" stroke="#1a1f2b" stroke-width="2"/>
+        <rect x="120" y="55" width="130" height="105" fill="#0f62fe" opacity="0.25"/>
+        <line x1="35" y1="160" x2="120" y2="160" stroke="#0f62fe" stroke-width="3"/>
+        <line x1="120" y1="55" x2="250" y2="55" stroke="#0f62fe" stroke-width="3"/>
+        <line x1="250" y1="160" x2="360" y2="160" stroke="#0f62fe" stroke-width="3"/>
+        <text x="185" y="45" font-size="13" text-anchor="middle" fill="#0f62fe">ln(1/Γₘ) over Δω</text>
+        <text x="185" y="120" font-size="13" text-anchor="middle">area ≤ π/RC</text>
+        <text x="330" y="150" font-size="13" fill="#5b6472">|Γ|=1 free</text>
+        <text x="200" y="182" font-size="13" text-anchor="middle" fill="#5b6472">ω</text>
+      </svg>
+    </div>
+  </div>
+  <p class="small muted">Derivation: analyticity of ln|Γ(s)| + the energy the capacitor must store — outline in the script; full account Pozar §5.9 / Fano 1950.</p>
+</section>
+
+<!-- 17 · Bode-Fano numbers -->
+<section class="slide">
+  <div class="kicker">2.1 The Bode–Fano criterion</div>
+  <h2>The client's three loads, judged before any design</h2>
+  <table style="font-size:2.8vh; border-collapse:collapse">
+    <tr class="muted small"><td style="padding:.5vh 2vh">load model</td><td style="padding:.5vh 2vh">pad C</td><td style="padding:.5vh 2vh">best conceivable RL over 2–4 GHz</td><td style="padding:.5vh 2vh">20 dB spec</td></tr>
+    <tr><td style="padding:.5vh 2vh">ideal pad</td><td style="padding:.5vh 2vh">0 pF</td><td style="padding:.5vh 2vh">no ceiling (π/RC = ∞)</td><td style="padding:.5vh 2vh">feasible</td></tr>
+    <tr><td style="padding:.5vh 2vh">revised pad</td><td style="padding:.5vh 2vh">2.2 pF</td><td style="padding:.5vh 2vh">78.96 dB</td><td style="padding:.5vh 2vh">feasible — the problem is ours</td></tr>
+    <tr style="background:#fdecea"><td style="padding:.5vh 2vh">first board</td><td style="padding:.5vh 2vh">10 pF</td><td style="padding:.5vh 2vh"><em class="term">17.37 dB</em></td><td style="padding:.5vh 2vh" class="warn"><em class="term">IMPOSSIBLE</em> — no network, no N, no genius</td></tr>
+  </table>
+  <div class="box rule"><p>The largest C that keeps 20-dB-over-an-octave physical: <em class="term">8.686 pF</em>.
+    Feasibility <em>before</em> design — this is what "reading a theorem as a budget" means.</p></div>
+  <div class="box trap"><p class="small">Fine print: the bound assumes infinitely many lossless elements and a
+    brick-wall |Γ|. It separates <em class="term">impossible</em> from <em class="term">conceivable</em> — it
+    never promises <em>achievable</em>. (78.96 dB is not a design target.)</p></div>
+</section>
+
+<!-- 18 · negotiating with a theorem -->
+<section class="slide">
+  <div class="kicker">2.1 The career skill</div>
+  <h2>"Your spec violates a theorem" — the three exits</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:2vh; margin-top:1vh">
+    <div class="box"><p><em class="term">Narrow Δω</em></p><p class="small muted">10 pF supports 20 dB over at most 1.74 GHz — offer 2.3–4.0 GHz, not the octave</p></div>
+    <div class="box"><p><em class="term">Relax Γ<sub>m</sub></em></p><p class="small muted">the full octave at 10 pF caps at 17.37 dB — offer 17 dB (honestly: 15, for margin)</p></div>
+    <div class="box" style="background:#e8f0fe"><p><em class="term">Fix the load</em></p><p class="small muted">respin the pad below 8.686 pF — the client's actual choice: 2.2 pF</p></div>
+  </div>
+  <div class="box rule"><p>One exit per factor of Δω·ln(1/Γ<sub>m</sub>) ≤ π/RC. Homework Q3 is this
+    email, written with your own module's numbers.</p></div>
+  <p class="small muted" style="margin-top:1.5vh">And the answer to "where was the ceiling in hour 1?" — the transformer's
+    load was pure resistance: C = 0, no stored energy, no ceiling. Bode–Fano bites loads that store energy.</p>
+</section>
+
+<!-- 19 · RLC near resonance -->
+<section class="slide">
+  <div class="kicker">2.2 Resonators</div>
+  <h2>Near resonance, everything is an RLC circuit</h2>
+  <div class="cols">
+    <div>
+      <p><em class="term">Series R-L-C</em> (R = loss, L·C set ω₀ = 1/√(LC)):</p>
+      <div class="math" style="text-align:left">Z<sub>in</sub> = R + jωL + 1/(jωC)<br>
+        ≈ R(1 + j·2Q<sub>u</sub>·Δω/ω₀) &nbsp;<span class="muted small">near ω₀</span></div>
+      <p class="small muted">Δω = ω − ω₀ (detuning). Parallel circuit: the exact dual,
+        Y<sub>in</sub> ≈ G(1 + j2Q<sub>u</sub>Δω/ω₀).</p>
+    </div>
+    <div>
+      <div class="box rule"><p><em class="term">Why this matters:</em> every single-mode resonator —
+        microstrip, coax, cavity — is one of these two near its resonance. One algebra,
+        one extraction method, any hardware. (That is why the homework dares to hand you
+        three wildly different resonators.)</p></div>
+    </div>
+  </div>
+  <div class="box"><p class="small">Which dual? Impedance <em>minimum</em> at resonance → series-type.
+    Impedance <em>maximum</em> → parallel-type. Ask the hardware, not the schematic.</p></div>
+</section>
+
+<!-- 20 · Q twice -->
+<section class="slide">
+  <div class="kicker">2.2 Q, derived twice</div>
+  <h2>Q (quality factor): energy bookkeeping = pole location</h2>
+  <div class="cols">
+    <div>
+      <div class="box rule"><p><em class="term">Level 1 — bookkeeping:</em><br>
+        Q = ω₀·(energy stored)/(power dissipated)<br>
+        <span class="small muted">series: Q<sub>u</sub> = ω₀L/R = 1/(ω₀RC)</span></p></div>
+      <div class="box rule"><p><em class="term">Level 2 — the pole:</em> natural response
+        s = −α ± jω<sub>d</sub>; ring it and energy decays e<sup>−ω₀t/Q</sup>.
+        <span class="math inline">Q<sub>u</sub> = ω₀/2α</span> — radians of ringing until 1/e.</p></div>
+    </div>
+    <div>
+      <div class="box"><p>Fourier-transform the decaying ring → a Lorentzian line whose
+        <em class="term">half-power full width is Δω = ω₀/Q</em>.<br>
+        <span class="small muted">The 3-dB method just reads the pole's real part off a spectrum.
+        Every measurement trap in 2.4 is a way of corrupting this sentence.</span></p></div>
+      <table style="font-size:2.4vh; border-collapse:collapse; margin-top:1.5vh">
+        <tr class="muted small"><td style="padding:.4vh 1.6vh">technology</td><td style="padding:.4vh 1.6vh">typical Q<sub>u</sub></td></tr>
+        <tr><td style="padding:.4vh 1.6vh">microstrip (FR-4)</td><td style="padding:.4vh 1.6vh">10²</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">coax</td><td style="padding:.4vh 1.6vh">10³</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">machined cavity</td><td style="padding:.4vh 1.6vh">10⁴+</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 21 · TL resonators -->
+<section class="slide">
+  <div class="kicker">2.3 Transmission-line resonators</div>
+  <h2>Lecture 2's standing waves, kept on purpose</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><em class="term">shorted λ/2</em>: series-type (impedance minimum)</li>
+        <li><em class="term">open λ/2</em>: parallel-type (impedance maximum)</li>
+        <li><em class="term">shorted λ/4</em>: parallel-type — half the copper, free heat-sink anchor; the combline workhorse</li>
+      </ul>
+      <p class="small muted">Mapping recipe every time: expand Z<sub>in</sub>(ω₀+Δω) via the tangent
+        transformation, pattern-match against R(1 + j2QΔω/ω₀).</p>
+    </div>
+    <div>
+      <div class="box rule"><p>From the expansion of a low-loss shorted λ/2 line
+        (Z<sub>in</sub> = Z₀(αℓ + jπΔω/ω₀)):<br>
+        <span class="math inline">Q<sub>u</sub> = β/(2α)</span> —
+        <em class="term">stored wave per lost wave</em>.<br>
+        <span class="small muted">α = loss (nepers/m), β = phase constant (rad/m) — lecture 2's γ = α + jβ.</span></p></div>
+      <p class="small muted" style="margin-top:1.5vh">It prices technologies instantly — the Q ladder on the
+        previous slide is just α ladders: tan δ (FR-4) → air coax → silver walls.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 22 · coupling -->
+<section class="slide">
+  <div class="kicker">2.4 Coupling</div>
+  <h2>You cannot measure Q<sub>u</sub> directly — measuring means coupling</h2>
+  <div class="math">1/Q<sub>L</sub> = 1/Q<sub>u</sub> + 1/Q<sub>e</sub></div>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big">Q<sub>u</sub></p><p class="small muted">unloaded — the resonator alone, its own losses</p></div>
+    <div class="box" style="text-align:center"><p class="big">Q<sub>e</sub></p><p class="small muted">external — the loss your probes/loops/gaps add</p></div>
+    <div class="box" style="text-align:center"><p class="big">Q<sub>L</sub></p><p class="small muted">loaded — what any sweep actually measures</p></div>
+  </div>
+  <div class="box rule"><p>Coupling coefficient κ = Q<sub>u</sub>/Q<sub>e</sub>; <em class="term">critical
+    coupling</em> κ = 1 (all the resonator's loss matched by the port — deepest reflection dip, the
+    oscillator designer's sweet spot).</p></div>
+  <p class="small muted" style="margin-top:1.5vh">The probe that lets energy in lets it out. The instrument is part of the circuit.</p>
+</section>
+
+<!-- 23 · measuring Q + trap -->
+<section class="slide">
+  <div class="kicker">2.4 Measuring Q — the 3-dB method and its traps</div>
+  <h2>The sweep gives Q<sub>L</sub>; the peak buys back Q<sub>u</sub></h2>
+  <div class="cols">
+    <div>
+      <p class="small">Transmission-coupled resonator, swept |S21|:</p>
+      <ul class="small">
+        <li>3-dB (half-power) width → <em class="term">Q<sub>L</sub> = f₀/Δf<sub>3dB</sub></em></li>
+        <li>peak transmission → the correction:</li>
+      </ul>
+      <div class="math" style="font-size:3vh">Q<sub>u</sub> = Q<sub>L</sub> / (1 − |S21(f₀)|)</div>
+      <p class="small muted" style="text-align:center">|S21(f₀)| <em class="term">LINEAR</em> — never dB</p>
+    </div>
+    <div>
+      <div class="box trap"><p><em class="term">The trap:</em> strong coupling → |S21(f₀)| → 1 →
+        Q<sub>L</sub> ≪ Q<sub>u</sub>. A resonator with 0.35 dB insertion loss has |S21| = 0.96:
+        its Q<sub>u</sub> is <em class="term">25×</em> the 3-dB number. Report Q<sub>L</sub> as
+        Q<sub>u</sub> and you slander the cavity by 25×.</p></div>
+    </div>
+  </div>
+  <div class="box"><p class="small">War story: the Q<sub>u</sub> ≥ 8000 cavity failed at "Q = 500" — with loops
+    chosen <em>for good SNR (signal-to-noise ratio)</em>. Insertion loss at resonance: 0.4 dB → loading ×20 →
+    the batch was fine. <em class="term">A Q quoted without its coupling is not a measurement.</em></p></div>
+</section>
+
+<!-- 24 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in NumPy and scikit-rf — every claim becomes a printed number</h2>
+  <ul>
+    <li>One λ/4 section, measured: 9.09 dB worst, 17.1% — the baseline</li>
+    <li>The Chebyshev designer: the table, the recursion, [40.40, 25.00, 15.47] Ω</li>
+    <li>The sweep: N=2 promises 20.09, measures <em class="term">18.98 — misses</em>; skrf referee agrees to 1e-15</li>
+    <li>The Bode–Fano calculator: 2.2 pF feasible, 10 pF <em class="term">impossible</em>, C<sub>max</sub> = 8.686 pF</li>
+    <li>A resonator on the bench: 3-dB ruler vs <span class="mono">skrf.qfactor.Qfactor</span> (the MAT 58 fit — NPL, National Physical Laboratory)</li>
+    <li>The deliberate bug: reporting Q<sub>L</sub> = 250 as "the Q" — off by exactly the coupling, ×2 live, ×25 in the homework</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> —
+  Q1 (what doubling N buys) and Q2 (dataset C's trap) are answered before you run.</p>
+</section>
+
+<!-- 25 · recap -->
+<section class="slide">
+  <div class="kicker">Recap</div>
+  <h2>Hours 1–2 in three sentences</h2>
+  <ul class="big">
+    <li>Bandwidth is bought with sections — <em class="term">~11.4 dB each</em> (Chebyshev) — and the sweep, not the small-reflection theory, signs the design: <em class="term">N=3, 29.44 dB</em>.</li>
+    <li>Bode–Fano issues each load a budget of <em class="term">π/RC</em>: 10 pF of pad capacitance makes 20-dB-over-an-octave a theorem violation (ceiling 17.37 dB).</li>
+    <li>Every measured Q is <em class="term">Q<sub>L</sub></em>; Q<sub>u</sub> = Q<sub>L</sub>/(1 − |S21(f₀)|) — a correction worth <em class="term">×25</em> this week.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Next lecture: the three-port impossibility theorem — matched, reciprocal, lossless: pick two — and the resistor that buys the Wilkinson divider its isolation.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 6 · Broadband Matching &amp; Resonators · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

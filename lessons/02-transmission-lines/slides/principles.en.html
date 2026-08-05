@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 2 · Principles — Transmission-Line Theory</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 2 · Hours 1–2</div>
+  <h1>Transmission-Line Theory<br>The Wire Becomes a Component</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: the line engine in NumPy, scikit-rf as referee → homework: the feed line that lies</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer, <em>Microwave and RF Design</em> Vol. 2, ch. 2–3 (free) · Pozar ch. 2 · Orfanidis ch. 10–11 (free)</p>
+</section>
+
+<!-- 2 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 The promise lecture 1 made</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">A line is a ladder of infinitesimal circuits — and two numbers summarize it.</em><br>
+      <span class="muted">From R′, L′, G′, C′ (per-meter) fall Z₀ and γ = α + jβ. Everything else is consequences.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">The line enforces a ratio; loads that refuse it reflect.</em><br>
+      <span class="muted">Z₀ is the V/I a traveling wave must carry. Γ measures the disagreement.</span></li>
+    <li><em class="term">A length of line transforms impedance — and that is a feature.</em><br>
+      <span class="muted">λ/4 inverts. Today: a feed line lying by 19 dB, and a match good to |Γ| ≈ 10⁻¹⁶.</span></li>
+  </ol>
+  <p class="small muted" style="margin-top:2vh">The test article all day: 10 m of coax to a 2.4 GHz antenna — λ = 83 mm, so the feed is <em class="term">120 wavelengths</em> long.</p>
+</section>
+
+<!-- 3 · RLGC cell -->
+<section class="slide">
+  <div class="kicker">1.2 The RLGC cell</div>
+  <h2>One slice dz of any two-conductor line</h2>
+  <svg viewBox="0 0 760 230" width="100%">
+    <g stroke="#1a1f2b" stroke-width="2.5" fill="none">
+      <!-- top rail with series R and L, two cells -->
+      <line x1="20" y1="60" x2="70" y2="60"/>
+      <path d="M70 60 l8 -12 l12 24 l12 -24 l12 24 l12 -24 l8 12" />
+      <path d="M134 60 a10 10 0 0 1 20 0 a10 10 0 0 1 20 0 a10 10 0 0 1 20 0"/>
+      <line x1="194" y1="60" x2="330" y2="60"/>
+      <path d="M330 60 l8 -12 l12 24 l12 -24 l12 24 l12 -24 l8 12" />
+      <path d="M394 60 a10 10 0 0 1 20 0 a10 10 0 0 1 20 0 a10 10 0 0 1 20 0"/>
+      <line x1="454" y1="60" x2="600" y2="60"/>
+      <line x1="620" y1="60" x2="660" y2="60" stroke-dasharray="4 6"/>
+      <!-- bottom rail -->
+      <line x1="20" y1="190" x2="600" y2="190"/>
+      <line x1="620" y1="190" x2="660" y2="190" stroke-dasharray="4 6"/>
+      <!-- shunt G and C, cell 1 -->
+      <line x1="250" y1="60" x2="250" y2="95"/>
+      <rect x="240" y="95" width="20" height="50" />
+      <line x1="250" y1="145" x2="250" y2="190"/>
+      <line x1="300" y1="60" x2="300" y2="115"/>
+      <line x1="286" y1="115" x2="314" y2="115"/>
+      <line x1="286" y1="127" x2="314" y2="127"/>
+      <line x1="300" y1="127" x2="300" y2="190"/>
+      <!-- shunt G and C, cell 2 -->
+      <line x1="510" y1="60" x2="510" y2="95"/>
+      <rect x="500" y="95" width="20" height="50" />
+      <line x1="510" y1="145" x2="510" y2="190"/>
+      <line x1="560" y1="60" x2="560" y2="115"/>
+      <line x1="546" y1="115" x2="574" y2="115"/>
+      <line x1="546" y1="127" x2="574" y2="127"/>
+      <line x1="560" y1="127" x2="560" y2="190"/>
+    </g>
+    <g font-size="16" fill="#1a1f2b">
+      <text x="78" y="35">R′dz</text>
+      <text x="140" y="35">L′dz</text>
+      <text x="205" y="125">G′dz</text>
+      <text x="320" y="100">C′dz</text>
+      <text x="20" y="230" fill="#5b6472" font-size="15">R′ conductor loss (Ω/m) · L′ magnetic flux (H/m) · G′ dielectric leak (S/m) · C′ charge storage (F/m)</text>
+    </g>
+    <g stroke="#0f62fe" stroke-width="2" fill="#0f62fe">
+      <line x1="228" y1="15" x2="322" y2="15"/><path d="M322 15 l-10 -5 v10 z"/>
+    </g>
+    <text x="230" y="10" font-size="15" fill="#0f62fe">one cell = dz</text>
+  </svg>
+  <div class="box rule"><p>Past ~λ/10, V and I differ from point to point — so write Kirchhoff on a slice dz
+    and let <span class="math inline">dz → 0</span>. The ladder is not a cartoon of the field theory; for
+    TEM (transverse electromagnetic) lines it <em class="term">is</em> the field theory in circuit clothes.</p></div>
+</section>
+
+<!-- 4 · telegrapher -->
+<section class="slide">
+  <div class="kicker">1.2 The telegrapher's equations</div>
+  <h2>KVL + KCL on the slice, then the limit</h2>
+  <div class="math">dV/dz = −(R′ + jωL′)·I &nbsp;&nbsp;&nbsp; dI/dz = −(G′ + jωC′)·V</div>
+  <p class="small muted" style="text-align:center">(KVL/KCL = Kirchhoff's voltage/current laws — used once more, on their way out)</p>
+  <p style="margin-top:1.2vh">Differentiate one, substitute the other — the wave equation, and the two numbers of the day:</p>
+  <div class="math">d²V/dz² = γ²V &nbsp;&nbsp; γ = √((R′+jωL′)(G′+jωC′)) = <em class="term">α + jβ</em>
+    &nbsp;&nbsp;&nbsp; Z₀ = √((R′+jωL′)/(G′+jωC′))</div>
+  <div class="box rule">
+    <p>Solutions e<sup>∓γz</sup>: two waves, one each way; α (nepers/m) shrinks them, β (rad/m) turns their
+    phase; λ = 2π/β. <em class="term">Every uniform line, fully described by γ and Z₀.</em></p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">Named for the 1850s engineers who watched undersea cables smear Morse code — the first signal-integrity crisis.</p>
+</section>
+
+<!-- 5 · the two numbers with numbers -->
+<section class="slide">
+  <div class="kicker">1.3 The two numbers, with numbers</div>
+  <h2>The course cable — an RG-58-class coax at 2.4 GHz</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.6vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 2vh">per-meter cell</td><td style="padding:.4vh 2vh">value</td></tr>
+        <tr><td style="padding:.4vh 2vh">R′</td><td style="padding:.4vh 2vh">10 Ω/m</td></tr>
+        <tr><td style="padding:.4vh 2vh">L′</td><td style="padding:.4vh 2vh">250 nH/m</td></tr>
+        <tr><td style="padding:.4vh 2vh">G′</td><td style="padding:.4vh 2vh">0.45 mS/m</td></tr>
+        <tr><td style="padding:.4vh 2vh">C′</td><td style="padding:.4vh 2vh">100 pF/m</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:1.5vh">R′, G′ frozen at their 2.4 GHz values (skin effect makes R′ ∝ √f — lecture 5's fine print). A modeling choice, stated out loud.</p>
+    </div>
+    <div>
+      <div class="box">
+        <p>Z₀ = √(L′/C′) = √2500 = <em class="term">50 Ω</em> — that's where 50 lives<br>
+        v<sub>p</sub> = 1/√(L′C′) = <em class="term">2×10⁸ m/s = 0.667c</em><br>
+        λ = v<sub>p</sub>/f = <em class="term">83.33 mm</em> → 10 m feed = <em class="term">120 λ</em><br>
+        α ≈ R′/2Z₀ + G′Z₀/2 = 0.111 Np/m = <em class="term">0.966 dB/m</em></p>
+      </div>
+      <p class="small muted" style="margin-top:1.5vh">With loss, hour 3 prints Z₀ = 50.0001 − j0.0589 Ω — the imaginary part is loss's fingerprint. 1 Np = 8.686 dB.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · what Z0 is not -->
+<section class="slide">
+  <div class="kicker">1.3 What Z₀ actually is</div>
+  <h2>An enforced ratio — not a resistor</h2>
+  <div class="box trap">
+    <p><em class="term">Z₀ is not measurable with an ohmmeter.</em> At DC the meter reads R′ℓ plus the far-end
+    termination; 50 Ω appears nowhere. Z₀ dissipates nothing — it is the V/I <em>exchange rate</em>
+    a traveling wave must carry.</p>
+  </div>
+  <div class="box rule">
+    <p>Terminate the line in Z₀ and the arriving wave finds its ratio already satisfied —
+    <em class="term">nothing reflects</em>. That single sentence is the whole theory of matching.</p>
+  </div>
+  <ul class="small" style="margin-top:2vh">
+    <li><em class="term">Why 50 Ω?</em> Air-line power handling peaks near 30 Ω, loss bottoms near 77 Ω — 50 is the committee compromise. (75 Ω survives in broadcast, where loss wins.)</li>
+    <li><em class="term">0.667c — the electrons?</em> No: they drift at mm/s. The energy rides the fields between the conductors; 0.667c = 1/√ε<sub>r</sub>, polyethylene's ε<sub>r</sub> ≈ 2.25.</li>
+  </ul>
+</section>
+
+<!-- 7 · Gamma derivation -->
+<section class="slide">
+  <div class="kicker">1.4 Reflection</div>
+  <h2>Two ratios, one pair of terminals — Γ resolves the standoff</h2>
+  <p>The wave carries V/I = Z₀; the load demands V/I = Z<sub>L</sub>. A backward wave appears so the <em>totals</em> obey the load (its current flows backward — it subtracts):</p>
+  <div class="math" style="font-size:4vh">Γ = V⁻/V⁺ = (Z<sub>L</sub> − Z₀)/(Z<sub>L</sub> + Z₀)</div>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big accent">Γ = −1</p><p class="small muted">short: all back, flipped (V pinned to 0)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">Γ = +1</p><p class="small muted">open: all back, upright (I pinned to 0)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">Γ = 0</p><p class="small muted">matched: ratio satisfied, silence</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">|Γ| = 1</p><p class="small muted">pure jX: stores, never absorbs — a mirror with a phase</p></div>
+  </div>
+  <div class="box rule"><p>The course antenna, met today and matched in lecture 3: Z<sub>L</sub> = 36 − j21 Ω →
+    <em class="term">Γ = 0.285∠−110.0°</em> — 8.1% of the power comes back.</p></div>
+</section>
+
+<!-- 8 · four dialects -->
+<section class="slide">
+  <div class="kicker">1.4 The four dialects</div>
+  <h2>One number, four suits — make the translations reflexes</h2>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big accent">0.285</p><p class="small muted">|Γ| — reflected amplitude ratio</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">1.80</p><p class="small muted">SWR (standing wave ratio) = (1+|Γ|)/(1−|Γ|)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">10.90 dB</p><p class="small muted">return loss = −20 log₁₀|Γ| (big is good)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">0.37 dB</p><p class="small muted">mismatch loss = −10 log₁₀(1−|Γ|²) (small is good)</p></div>
+  </div>
+  <div class="box"><p>Power split: |Γ|² = 8.1% reflected, 1 − |Γ|² = <em class="term">91.9% delivered</em>.
+    A datasheet's "S11 = −10.9 dB" and "RL = 10.9 dB" are the same fact — signs are conventions, not physics.</p></div>
+  <div class="box trap"><p class="small"><em class="term">Two gammas now live on your page.</em> γ = α + jβ is the propagation
+    constant; Γ is the reflection coefficient. The homework code refuses the pun by name:
+    <span class="mono">gamma_per_m</span> vs <span class="mono">refl</span>.</p></div>
+</section>
+
+<!-- 9 · where the reflected power goes -->
+<section class="slide">
+  <div class="kicker">1.4 The reflected-power picture</div>
+  <h2>Where do the 8.1% go?</h2>
+  <ul>
+    <li>Back down the line, toward the generator — reflections are not destroyed, they are <em class="term">re-routed</em>.</li>
+    <li>Matched generator (a 50 Ω source — this course's standing assumption): the source resistance absorbs them. Heat, quietly.</li>
+    <li>Mismatched generator: the wave reflects <em>again</em> — and again. That multiple-bounce story is hour 3's bounce diagram; run to steady state, it <em class="term">is</em> the standing-wave formulas. One physics, two views.</li>
+  </ul>
+  <div class="box rule">
+    <p>Why "SWR" survives as a word: the first RF instrument was a slotted line — it could only measure the
+    envelope. And it still matters: |V|max = (1+|Γ|)·|V⁺| arcs connectors; (1+|Γ|)× current heats finals.
+    <em class="term">SWR is the stress dialect of Γ.</em></p>
+  </div>
+</section>
+
+<!-- 10 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>A line is the dz → 0 limit of an RLGC ladder; the telegrapher's equations compress it to
+      <em class="term">γ and Z₀</em> — ours: 50 Ω, 0.667c, 0.97 dB/m.</li>
+    <li>Z₀ is an <em class="term">enforced ratio</em>, not a resistor — and a load that disagrees reflects
+      Γ = (Z<sub>L</sub>−Z₀)/(Z<sub>L</sub>+Z₀). Our antenna: 8.1% back.</li>
+    <li>|Γ| ⇔ SWR ⇔ return loss ⇔ mismatch loss: <em class="term">one number, four dialects</em>.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2: what the two counter-running waves do to the line between them — and the moment a cable becomes a circuit element.</p>
+</section>
+
+<!-- 11 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Standing Waves,<br>the Quarter-Wave Transformer,<br>and the Feed Line That Lies</h1>
+  <p class="muted" style="margin-top:3vh">The envelope that stands still · the tangent transformation · loss launders reflections · a step in the time domain</p>
+</section>
+
+<!-- 12 · standing wave anatomy -->
+<section class="slide">
+  <div class="kicker">2.1 Standing-wave anatomy</div>
+  <h2>The wave moves; the envelope does not</h2>
+  <svg viewBox="0 0 760 250" width="100%">
+    <!-- envelope of |1 + 0.285 e^{-j2beta l}|, stylized; load at right -->
+    <g stroke="#1a1f2b" stroke-width="3" fill="none">
+      <path d="M20 90 Q 60 62 100 62 Q 160 62 200 125 Q 240 188 300 188 Q 340 188 380 125 Q 420 62 480 62 Q 520 62 560 125 Q 600 188 660 188 Q 690 188 710 170"/>
+      <path d="M20 160 Q 60 188 100 188 Q 160 188 200 125 Q 240 62 300 62 Q 340 62 380 125 Q 420 188 480 188 Q 520 188 560 125 Q 600 62 660 62 Q 690 62 710 80"/>
+    </g>
+    <g stroke="#0f62fe" stroke-width="1.6" fill="none" opacity="0.5">
+      <path d="M20 100 Q 100 70 200 130 Q 300 185 380 130 Q 480 70 560 130 Q 640 185 710 160"/>
+      <path d="M20 140 Q 100 180 200 122 Q 300 66 380 122 Q 480 180 560 122 Q 640 68 710 90"/>
+    </g>
+    <line x1="720" y1="40" x2="720" y2="210" stroke="#b3261e" stroke-width="3"/>
+    <g font-size="15" fill="#1a1f2b">
+      <text x="726" y="130" fill="#b3261e">Z_L</text>
+      <text x="70" y="45">|V|max = 1+|Γ| = 1.285</text>
+      <text x="255" y="225">|V|min = 1−|Γ| = 0.715</text>
+      <text x="560" y="45" fill="#5b6472">ratio = SWR = 1.80</text>
+    </g>
+    <g stroke="#5b6472" stroke-width="1.5">
+      <line x1="660" y1="188" x2="660" y2="235"/>
+      <line x1="300" y1="188" x2="300" y2="235"/>
+    </g>
+    <g font-size="14" fill="#5b6472">
+      <text x="590" y="248">first min: 0.0973 λ from Z_L</text>
+      <text x="260" y="248">next min: +λ/2</text>
+    </g>
+  </svg>
+  <div class="box rule"><p>V(ℓ) = V⁺e<sup>jβℓ</sup>(1 + Γe<sup>−j2βℓ</sup>), ℓ measured <em>from the load</em>.
+    Measured max/min = 1.2851/0.7149 = <em class="term">1.7976</em>; SWR from |Γ| said 1.7976 — two routes,
+    one number. The pattern repeats every <em class="term">λ/2</em>, not λ.</p></div>
+</section>
+
+<!-- 13 · crank diagram -->
+<section class="slide">
+  <div class="kicker">2.1 The crank diagram — next week's Smith chart, in embryo</div>
+  <h2>1 + Γe<sup>−j2βℓ</sup>: a crank sweeping clockwise</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 420 300" width="100%">
+        <g stroke="#5b6472" stroke-width="1" opacity="0.5">
+          <line x1="20" y1="170" x2="400" y2="170"/>
+          <line x1="60" y1="30" x2="60" y2="290"/>
+        </g>
+        <!-- unit phasor -->
+        <line x1="60" y1="170" x2="280" y2="170" stroke="#1a1f2b" stroke-width="3"/>
+        <path d="M280 170 l-12 -6 v12 z" fill="#1a1f2b"/>
+        <!-- crank circle -->
+        <circle cx="280" cy="170" r="63" fill="none" stroke="#5b6472" stroke-dasharray="5 5"/>
+        <!-- crank arm at angle ~-110+ rotation: draw at 40 deg above axis -->
+        <line x1="280" y1="170" x2="328" y2="130" stroke="#0f62fe" stroke-width="3"/>
+        <path d="M328 130 l-13 2 l6 11 z" fill="#0f62fe"/>
+        <!-- resultant -->
+        <line x1="60" y1="170" x2="328" y2="130" stroke="#b3261e" stroke-width="2.5"/>
+        <!-- rotation arrow -->
+        <path d="M330 222 a 63 63 0 0 1 -68 8" fill="none" stroke="#0f62fe" stroke-width="2"/>
+        <path d="M262 230 l14 -2 l-6 -11 z" fill="#0f62fe"/>
+        <g font-size="15">
+          <text x="150" y="192" >1</text>
+          <text x="318" y="118" fill="#0f62fe">Γe^(−j2βℓ), length |Γ|</text>
+          <text x="120" y="135" fill="#b3261e">|V| envelope = crank length</text>
+          <text x="300" y="255" fill="#0f62fe">ℓ grows → clockwise, 2βℓ</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <ul>
+        <li>Arm along +1: <em class="term">voltage maximum</em>. Arm against 1: <em class="term">minimum</em>.</li>
+        <li>Full revolution = 2βℓ advancing 2π = <em class="term">ℓ advancing λ/2</em> — the factor of 2 everyone trips on once.</li>
+        <li>Crank crosses the real axis <em class="term">twice per lap</em> → Z<sub>in</sub> is purely real every λ/4, alternating Z₀/SWR and Z₀·SWR.</li>
+      </ul>
+      <div class="box rule"><p class="small">Everything a lossless line does to an impedance is a <em class="term">rotation</em> of Γ. Lecture 3 gives this picture its famous coordinate grid.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · tangent transformation -->
+<section class="slide">
+  <div class="kicker">2.2 Input impedance</div>
+  <h2>The tangent transformation</h2>
+  <div class="math" style="font-size:4vh">Z<sub>in</sub> = Z₀ (Z<sub>L</sub> + jZ₀ tan βℓ) / (Z₀ + jZ<sub>L</sub> tan βℓ)</div>
+  <ul style="margin-top:1vh">
+    <li>tan has period π → Z<sub>in</sub> repeats every <em class="term">λ/2</em> (the crank's period, as it must be).</li>
+    <li>tan sweeps 0 → ∞ each period → within λ/2 of any load, Z<sub>in</sub> visits capacitive, inductive, small-R, large-R — <em class="term">a cable is an impedance transformer whether you ordered one or not</em>.</li>
+    <li>Lossy version: replace j·tan βℓ with tanh γℓ — the form your homework engine must use (<span class="mono">np.tan</span> explodes at the λ/4 pole; <span class="mono">np.tanh</span> shrugs).</li>
+  </ul>
+  <div class="box trap"><p>Change a jumper's length by 3 cm at 2.4 GHz and you have redesigned the input network.
+    Nothing "did nothing" — it was measured at the one frequency where the tangent hides.</p></div>
+</section>
+
+<!-- 15 · special cases -->
+<section class="slide">
+  <div class="kicker">2.2 The special cases — each one a tool</div>
+  <h2>λ/2 repeats · λ/4 inverts · stubs synthesize reactance</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big accent">ℓ = λ/2</p><p>Z<sub>in</sub> = Z<sub>L</sub></p><p class="small muted">the line repeats the load — invisible (at that one frequency)</p></div>
+    <div class="box" style="text-align:center; background:#e8f0fe"><p class="big accent">ℓ = λ/4</p><p>Z<sub>in</sub> = Z₀²/Z<sub>L</sub></p><p class="small muted">the inverter: large↔small, capacitive↔inductive, real→real</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">stubs</p><p>jZ₀tan βℓ / −jZ₀cot βℓ</p><p class="small muted">short / open spur = any reactance you want (lecture 3's parts bin)</p></div>
+  </div>
+  <div class="box rule">
+    <p><em class="term">The quarter-wave transformer:</em> to match a real R to Z₀, build the λ/4 from line of
+    Z<sub>T</sub> = √(Z₀R) — then Z<sub>in</sub> = Z<sub>T</sub>²/R = Z₀ exactly. Two lines of algebra,
+    one of the most-built structures in microwave engineering.</p>
+  </div>
+</section>
+
+<!-- 16 · the lambda/4 fix -->
+<section class="slide">
+  <div class="kicker">2.2 The fix, for our complex antenna</div>
+  <h2>Walk to a real plane, then invert — exact by construction</h2>
+  <div class="cols">
+    <div>
+      <ol>
+        <li>λ/4 matches <em class="term">real</em> loads only — and 36 − j21 Ω is not.</li>
+        <li>Z<sub>in</sub> is purely real where the crank crosses the axis: at a voltage <em class="term">minimum</em>, Z = Z₀/SWR = <em class="term">27.8 Ω</em>; at a maximum, Z₀·SWR = 89.9 Ω.</li>
+        <li>Spacer of plain 50 Ω line to the first minimum: <em class="term">0.0973 λ = 8.11 mm</em>.</li>
+        <li>Quarter wave (20.83 mm) of Z<sub>T</sub> = √(50 × 27.8) = <em class="term">37.29 Ω</em>.</li>
+      </ol>
+    </div>
+    <div>
+      <svg viewBox="0 0 380 210" width="100%">
+        <g stroke="#1a1f2b" stroke-width="2.5" fill="none">
+          <line x1="10" y1="80" x2="90" y2="80"/><line x1="10" y1="130" x2="90" y2="130"/>
+          <rect x="90" y="70" width="120" height="70" fill="#dbe8ff"/>
+          <rect x="210" y="80" width="100" height="50" fill="#eef2f7"/>
+        </g>
+        <rect x="310" y="65" width="24" height="80" rx="5" fill="#b3261e"/>
+        <g font-size="14" text-anchor="middle">
+          <text x="50" y="65">50 Ω system</text>
+          <text x="150" y="100">Z_T = 37.29 Ω</text>
+          <text x="150" y="120">λ/4 = 20.83 mm</text>
+          <text x="260" y="100">50 Ω spacer</text>
+          <text x="260" y="120">8.11 mm</text>
+          <text x="322" y="170" fill="#b3261e">36 − j21 Ω</text>
+          <text x="260" y="195" fill="#5b6472">plane here reads 27.8 Ω, purely real</text>
+        </g>
+      </svg>
+      <div class="box rule"><p class="small">Checker prints |Γ(f₀)| ≈ <em class="term">7×10⁻¹⁷</em> — machine epsilon:
+        the algebra is exact, the referee confirms arithmetic. Homework hint: design with the ideal line's β — a
+        10⁻¹⁰ criterion notices sixth digits.</p></div>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">"Narrowband" is a number, not a slur: measured 10-dB-RL bandwidth <em class="term">2.33 GHz</em> (97% of f₀); 20-dB, 577 MHz (24%). Lecture 6 makes it wider.</p>
+</section>
+
+<!-- 17 · loss -->
+<section class="slide">
+  <div class="kicker">2.3 Loss</div>
+  <h2>Where dB/m comes from — and what 10 m costs</h2>
+  <div class="math">α ≈ R′/2Z₀ + G′Z₀/2 = 0.100 + 0.011 = 0.111 Np/m &nbsp;→&nbsp; × 8.686 = <em class="term">0.966 dB/m</em></div>
+  <ul>
+    <li>Amplitude falls e<sup>−αℓ</sup>, power e<sup>−2αℓ</sup>; our 10 m feed: <em class="term">9.66 dB one way</em>.</li>
+    <li>Conductor loss ÷ Z₀, dielectric loss × Z₀ — the two mechanisms pull Z₀'s optimum in opposite directions (the 30-vs-77 story behind "50 Ω").</li>
+  </ul>
+  <div class="box">
+    <p>The power ledger at f₀, of 1 W incident (homework module 2 makes it exact):
+    delivered <em class="term">99.3 mW</em> · reflected back out <em class="term">0.95 mW</em> ·
+    cable heat <em class="term">899.7 mW</em>. Delivered sits 10.03 dB below incident =
+    9.66 (line) + 0.37 (mismatch) — the taxes add in dB.</p>
+  </div>
+  <div class="box rule"><p class="small">The invariant that referees module 2: loss off → |Γ|² + delivered = 1 to 10⁻¹⁶.
+    Energy conservation certifies your code — no library required.</p></div>
+</section>
+
+<!-- 18 · the lie -->
+<section class="slide">
+  <div class="kicker">2.3 The feed line that lies</div>
+  <h2>Every dB of cable flatters the load by two</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 380 220" width="100%">
+        <g stroke="#1a1f2b" stroke-width="2.5" fill="none">
+          <rect x="10" y="80" width="70" height="60" rx="6" fill="#eef2f7"/>
+          <line x1="80" y1="110" x2="300" y2="110"/>
+        </g>
+        <rect x="300" y="75" width="22" height="70" rx="5" fill="#b3261e"/>
+        <g font-size="14">
+          <text x="16" y="115">VNA</text>
+          <text x="140" y="95">10 m · −9.66 dB each way</text>
+          <text x="255" y="180" fill="#b3261e">antenna: RL 10.90 dB</text>
+          <text x="16" y="180" fill="#0f62fe">reads: RL 30.09 dB</text>
+        </g>
+        <g stroke="#0f62fe" stroke-width="2" fill="none">
+          <path d="M90 125 Q 190 150 290 125" stroke-dasharray="6 4"/>
+        </g>
+        <path d="M95 128 l12 8 l2 -13 z" fill="#0f62fe"/>
+      </svg>
+    </div>
+    <div>
+      <div class="math" style="font-size:3vh">RL<sub>in</sub> ≈ RL<sub>antenna</sub> + 2 × line loss<br>= 10.90 + 19.33 ≈ 30.2 dB</div>
+      <p class="small muted" style="text-align:center">measured: 30.09 dB — the 0.1 dB gap is the cable's slightly complex Z₀</p>
+    </div>
+  </div>
+  <div class="box trap">
+    <p><em class="term">The antenna is mediocre (SWR 1.8); the instrument says excellent (30 dB).</em>
+    The reflection paid the attenuation toll twice. A long-enough lossy cable makes <em>any</em> load —
+    even an open — look matched. Measure at the plane you care about, or correct for the cable.
+    (VNA = vector network analyzer — lecture 4 tours one.)</p>
+  </div>
+</section>
+
+<!-- 19 · bounce diagram -->
+<section class="slide">
+  <div class="kicker">2.4 Time domain</div>
+  <h2>The bounce diagram — a step, bouncing geometrically</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 380 290" width="100%">
+        <g stroke="#1a1f2b" stroke-width="2.5">
+          <line x1="60" y1="20" x2="60" y2="270"/>
+          <line x1="320" y1="20" x2="320" y2="270"/>
+        </g>
+        <g font-size="14" text-anchor="middle">
+          <text x="60" y="14">source (25 Ω)</text>
+          <text x="320" y="14">load (150 Ω)</text>
+        </g>
+        <g stroke="#0f62fe" stroke-width="2.5" fill="none">
+          <line x1="60" y1="40" x2="320" y2="80"/>
+          <line x1="320" y1="80" x2="60" y2="120"/>
+          <line x1="60" y1="120" x2="320" y2="160"/>
+          <line x1="320" y1="160" x2="60" y2="200"/>
+          <line x1="60" y1="200" x2="320" y2="240"/>
+        </g>
+        <g font-size="13" fill="#1a1f2b">
+          <text x="140" y="48">+0.667 V</text>
+          <text x="150" y="112">+0.333 V (Γ_L = +½)</text>
+          <text x="140" y="152">−0.111 V (Γ_s = −⅓)</text>
+          <text x="150" y="204">−0.056 V</text>
+          <text x="140" y="242">+0.019 V</text>
+        </g>
+        <g font-size="13" fill="#b3261e" text-anchor="start">
+          <text x="328" y="84">t = 50 ns: 1.000 V</text>
+          <text x="328" y="164">150 ns: 0.833 V</text>
+          <text x="328" y="244">250 ns: 0.861 V</text>
+          <text x="328" y="272">→ 0.857 V (DC)</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <ul>
+        <li>Launch = divider against <em class="term">Z₀</em>, not the load — causality: 50/(25+50) = 0.667 V.</li>
+        <li>Each round trip × Γ<sub>L</sub>Γ<sub>s</sub> = −1/6 — geometric convergence to the DC divider 0.857 V.</li>
+        <li>First edge overshoots by <em class="term">+16.7%</em>.</li>
+      </ul>
+      <div class="box rule"><p class="small">On a scope this is called <em class="term">ringing</em>; its true name is |Γ|,
+        its period the round trip 2ℓ/v<sub>p</sub>. "Electrically long" in time-domain dress: rise time &lt; round trip —
+        the digital twin of λ/10. Run it to t → ∞ and the phasor formulas reappear.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 20 · war story -->
+<section class="slide">
+  <div class="kicker">2.4 War story</div>
+  <h2>The half-wavelength jumper that "did nothing"</h2>
+  <ul>
+    <li>Dual-band site: low band at f₀, second band at 1.5f₀. A damaged 50 Ω jumper is replaced by a
+      <em class="term">75 Ω</em> video cable of the same length — exactly <em class="term">λ/2 at f₀</em>.</li>
+    <li>Bench check at f₀: nothing changes. Of course — <em class="term">a half-wave line repeats its load
+      regardless of its own Z₀</em>. The check certified nothing.</li>
+    <li>At 1.5f₀ the same jumper is <em class="term">3λ/4 — an odd quarter wave</em>: a full inverter through 75 Ω.
+      The 50 Ω system reads 75²/50 = <em class="term">112.5 Ω</em> — SWR 2.25, return loss 8.3 dB, margin gone.</li>
+  </ul>
+  <div class="box trap">
+    <p><em class="term">The tangent is periodic: a line's behavior at one frequency certifies that frequency
+    only.</em> Nobody mismeasured — the measurement was taken exactly where the tangent hides.
+    Hour 3 commits this sin on purpose, with a transformer.</p>
+  </div>
+</section>
+
+<!-- 21 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in three sentences</h2>
+  <ul class="big">
+    <li>Standing waves: envelope max/min <em class="term">is</em> SWR; the crank rotates 2βℓ, everything repeats every λ/2, and the real-axis crossings (Z₀/SWR, Z₀·SWR) host the λ/4 fix — <em class="term">exact by construction</em>.</li>
+    <li>Loss launders reflections: RL<sub>in</sub> ≈ RL<sub>L</sub> + 2 × line loss — our cable lies by <em class="term">19 dB</em>, and 900 mW of every watt becomes heat.</li>
+    <li>A step bounces geometrically; <em class="term">ringing is |Γ|</em> speaking the time domain.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 builds the line engine in twelve lines, referees it with scikit-rf, and designs a transformer that is wrong in a way the bench would love.</p>
+</section>
+
+<!-- 22 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in NumPy and scikit-rf — every claim becomes a printed number</h2>
+  <ul>
+    <li>The line engine — γ, Z₀, Z<sub>in</sub> in twelve lines (tanh, so the λ/4 pole never bites)</li>
+    <li>The referee — skrf <span class="mono">DistributedCircuit</span> solves the same cell: agreement <em class="term">5.4×10⁻¹⁶</em> across the band</li>
+    <li>Standing waves animated — the envelope stands, max/min = 1.7976, first minimum at 0.0976 λ</li>
+    <li>The bounce diagram — 0.667 V launch, +16.7% overshoot, staircase to 0.857 V</li>
+    <li>The deliberate bug — a 3λ/4 transformer that "also works": same f₀, <em class="term">half the bandwidth</em> (577 → 276 MHz), 3× the copper, 3× the loss</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> — Q1 (where is Z<sub>in</sub> purely real?) and Q2 (which way does the cable lie?) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 2 · Transmission-Line Theory · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

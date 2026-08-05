@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 7 · Principles — Power Dividers &amp; Couplers</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 7 · Hours 1–2</div>
+  <h1>Power Dividers &amp; Couplers<br>Three-Ports, Four-Ports, and One Well-Placed Resistor</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: skrf Circuit, live → homework: feed four antennas</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer, <em>Microwave and RF Design</em> Vol. 4, ch. 5–6 (free) · Pozar ch. 7 · Wilkinson 1960 (2 pages)</p>
+</section>
+
+<!-- 2 · the feed problem -->
+<section class="slide">
+  <div class="kicker">1.1 One transmitter, four antennas</div>
+  <h2>The humble box this week is about</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 380 250" width="100%">
+        <rect x="10" y="105" width="52" height="40" rx="6" fill="#1a1f2b"/>
+        <text x="36" y="130" font-size="13" fill="#fff" text-anchor="middle">TX</text>
+        <line x1="62" y1="125" x2="110" y2="125" stroke="#1a1f2b" stroke-width="2.5"/>
+        <circle cx="128" cy="125" r="18" fill="#e8f0fe" stroke="#0f62fe" stroke-width="2"/>
+        <text x="128" y="130" font-size="12" text-anchor="middle" fill="#0f62fe">÷2</text>
+        <path d="M143 114 L185 65" stroke="#1a1f2b" stroke-width="2.5" fill="none"/>
+        <path d="M143 136 L185 185" stroke="#1a1f2b" stroke-width="2.5" fill="none"/>
+        <circle cx="203" cy="65" r="18" fill="#e8f0fe" stroke="#0f62fe" stroke-width="2"/>
+        <text x="203" y="70" font-size="12" text-anchor="middle" fill="#0f62fe">÷2</text>
+        <circle cx="203" cy="185" r="18" fill="#e8f0fe" stroke="#0f62fe" stroke-width="2"/>
+        <text x="203" y="190" font-size="12" text-anchor="middle" fill="#0f62fe">÷2</text>
+        <g stroke="#1a1f2b" stroke-width="2.5" fill="none">
+          <path d="M218 55 L262 30"/><path d="M218 75 L262 100"/>
+          <path d="M218 175 L262 150"/><path d="M218 195 L262 220"/>
+        </g>
+        <g fill="#b3261e">
+          <path d="M262 22 L282 30 L262 38 Z"/><path d="M262 92 L282 100 L262 108 Z"/>
+          <path d="M262 142 L282 150 L262 158 Z"/><path d="M262 212 L282 220 L262 228 Z"/>
+        </g>
+        <g font-size="12" fill="#5b6472">
+          <text x="292" y="34">ant 1</text><text x="292" y="104">ant 2</text>
+          <text x="292" y="154">ant 3</text><text x="292" y="224">ant 4</text>
+        </g>
+        <text x="128" y="230" font-size="13" fill="#5b6472">a corporate (tree) feed — the homework · TX = transmitter</text>
+      </svg>
+    </div>
+    <div>
+      <p>Lecture 13's array, fed. The demands:</p>
+      <ul>
+        <li><em class="term">Equal amplitude, equal phase</em> — errors become sidelobes</li>
+        <li><em class="term">Matched</em> everywhere</li>
+        <li><em class="term">Isolated outputs</em> — one element's reflection must not re-emerge in a neighbor's drive</li>
+      </ul>
+      <div class="box trap"><p>The humble two-way splitter that does all this is
+        <em class="term">provably impossible</em> with three ports. This lecture: the proof, and the two escapes.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why this lecture exists</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">A three-port cannot be matched, reciprocal, and lossless at once.</em><br>
+      <span class="muted">Pick two. Three lines of lecture-4 algebra; hour 3 prints its fingerprint: 1.000000.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">Even/odd analysis is the technique of the week.</em><br>
+      <span class="muted">Four lines dissolve the Wilkinson, six the branch-line — and it returns for lecture 9's coupled lines.</span></li>
+    <li><em class="term">Couplers are specified by C, D, I — and two of them are routinely confused.</em><br>
+      <span class="muted">Isolation ≠ directivity; they differ by exactly the coupling, and the confusion has a price tag.</span></li>
+  </ol>
+</section>
+
+<!-- 4 · impossibility fast proof -->
+<section class="slide">
+  <div class="kicker">1.2 The impossibility theorem</div>
+  <h2>Matched + reciprocal + lossless: the fast proof</h2>
+  <p>Assume all three of a 3×3 S-matrix (lecture 4's language):</p>
+  <div class="math">S₁₁ = S₂₂ = S₃₃ = 0 &nbsp;·&nbsp; S = Sᵀ &nbsp;·&nbsp; SᴴS = I</div>
+  <div class="box rule">
+    <p>Column orthogonality (zeros do the work):&nbsp;
+    S₁₃*S₂₃ = 0, &nbsp; S₁₂*S₂₃ = 0, &nbsp; S₁₂*S₁₃ = 0<br>
+    → at least <em class="term">two of the three entries vanish</em>.<br>
+    Column norms: |S₁₂|² + |S₁₃|² = 1 (and cyclic) → some column has norm 0 ≠ 1.
+    <em class="term">Contradiction.</em></p>
+  </div>
+  <p class="muted small">Three lines. When a vendor claims a matched, lossless, reciprocal three-way splitter, one of those words is marketing.</p>
+</section>
+
+<!-- 5 · slow proof -->
+<section class="slide">
+  <div class="kicker">1.2 The impossibility theorem</div>
+  <h2>The same proof, said physically</h2>
+  <ul>
+    <li><em class="term">Unit column norm</em> = power in at one port all comes out — losslessness, one port at a time.</li>
+    <li><em class="term">Column orthogonality</em> = losslessness for <em>combined</em> drives: superposition must conserve power for <em class="term">every</em> excitation, not just the ones in the test plan.</li>
+    <li>The match assumption deleted the diagonal — orthogonality runs out of degrees of freedom.</li>
+  </ul>
+  <div class="box trap">
+    <p><em class="term">No topology escapes.</em> The proof never assumed one — no arrangement of
+    lossless plumbing behind three matched ports can dodge it.</p>
+  </div>
+  <p class="small muted">Hold "every excitation, not just the test plan" — it returns as homework Q3, and as a war story.</p>
+</section>
+
+<!-- 6 · pick two map -->
+<section class="slide">
+  <div class="kicker">1.3 Pick two</div>
+  <h2>The escape map — one device per surrendered word</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:2vh; margin-top:1vh">
+    <div class="box"><p><em class="term">Give up lossless</em></p>
+      <p class="small muted">resistive star · Wilkinson<br>match + reciprocity kept;<br>loss aimed carefully (§1.4)</p></div>
+    <div class="box"><p><em class="term">Give up reciprocity</em></p>
+      <p class="small muted">circulator (ferrite + magnet)<br>1→2→3→1; one antenna serves<br>TX and RX — lecture 12</p></div>
+    <div class="box"><p><em class="term">Give up match</em></p>
+      <p class="small muted">the lossless tee junction<br>sees 25 Ω, |Γ| = 1/3,<br>zero isolation</p></div>
+  </div>
+  <div class="box rule"><p>What an array feed needs is the forbidden fourth option: matched, reciprocal,
+    isolated, and lossless <em class="term">along the paths we use</em>. That fine print is the Wilkinson.</p></div>
+</section>
+
+<!-- 7 · resistive star -->
+<section class="slide">
+  <div class="kicker">1.3 Pick two</div>
+  <h2>The matched resistive star — honesty in a can</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 320 200" width="100%">
+        <circle cx="160" cy="100" r="5" fill="#1a1f2b"/>
+        <g stroke="#1a1f2b" stroke-width="2.5" fill="none">
+          <path d="M160 100 L160 55"/><path d="M160 100 L120 135"/><path d="M160 100 L200 135"/>
+          <path d="M160 40 L160 20"/><path d="M105 148 L88 163"/><path d="M215 148 L232 163"/>
+        </g>
+        <g fill="#fdecea" stroke="#b3261e" stroke-width="1.5">
+          <rect x="152" y="40" width="16" height="16" rx="3"/>
+          <rect x="103" y="133" width="16" height="16" rx="3" transform="rotate(-45 111 141)"/>
+          <rect x="201" y="133" width="16" height="16" rx="3" transform="rotate(45 209 141)"/>
+        </g>
+        <g font-size="13" fill="#5b6472">
+          <text x="176" y="52">Z₀/3 = 16.7 Ω</text>
+          <text x="150" y="14">port 1</text><text x="52" y="178">port 2</text><text x="222" y="178">port 3</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <p>Matched everywhere, reciprocal, S₁₂ = S₁₃ = S₂₃ = ½:</p>
+      <ul>
+        <li>Every path: <em class="term">−6.02 dB</em> — 3 dB honest split + <em class="term">3 dB heat</em></li>
+        <li>Outputs hear each other at <em class="term">−6 dB</em> — no isolation</li>
+      </ul>
+      <div class="box trap"><p>Fine as a lab divider. As an array feed: disqualified twice —
+        loss <em>and</em> crosstalk.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Wilkinson schematic -->
+<section class="slide">
+  <div class="kicker">1.4 The Wilkinson divider</div>
+  <h2>Wilkinson 1960 — the whole miracle is the placement</h2>
+  <div class="cols">
+    <div style="flex:1.3">
+      <svg viewBox="0 0 440 260" width="100%">
+        <line x1="15" y1="130" x2="80" y2="130" stroke="#1a1f2b" stroke-width="3"/>
+        <text x="15" y="118" font-size="14" fill="#5b6472">port 1 (50 Ω)</text>
+        <circle cx="80" cy="130" r="4" fill="#1a1f2b"/>
+        <path d="M80 130 Q 150 60 250 60" fill="none" stroke="#0f62fe" stroke-width="5"/>
+        <path d="M80 130 Q 150 200 250 200" fill="none" stroke="#0f62fe" stroke-width="5"/>
+        <text x="135" y="48" font-size="14" fill="#0f62fe">λ/4 · √2·Z₀ = 70.7 Ω</text>
+        <text x="135" y="230" font-size="14" fill="#0f62fe">λ/4 · 70.7 Ω</text>
+        <line x1="250" y1="60" x2="360" y2="60" stroke="#1a1f2b" stroke-width="3"/>
+        <line x1="250" y1="200" x2="360" y2="200" stroke="#1a1f2b" stroke-width="3"/>
+        <circle cx="290" cy="60" r="4" fill="#1a1f2b"/>
+        <circle cx="290" cy="200" r="4" fill="#1a1f2b"/>
+        <line x1="290" y1="60" x2="290" y2="105" stroke="#b3261e" stroke-width="2.5"/>
+        <rect x="280" y="105" width="20" height="50" rx="4" fill="#fdecea" stroke="#b3261e" stroke-width="2"/>
+        <line x1="290" y1="155" x2="290" y2="200" stroke="#b3261e" stroke-width="2.5"/>
+        <text x="308" y="136" font-size="15" fill="#b3261e" font-weight="700">R = 2Z₀ = 100 Ω</text>
+        <text x="365" y="64" font-size="14" fill="#5b6472">port 2</text>
+        <text x="365" y="204" font-size="14" fill="#5b6472">port 3</text>
+        <text x="308" y="156" font-size="12" fill="#b3261e">(no ground!)</text>
+      </svg>
+    </div>
+    <div>
+      <ul>
+        <li>Two <em class="term">quarter-wave arms</em>, √2·Z₀ each</li>
+        <li>One resistor <em class="term">between the outputs</em> — not to ground</li>
+        <li>Symmetric about the horizontal mirror → <em class="term">even/odd analysis applies</em></li>
+      </ul>
+      <div class="box rule"><p>Claimed: matched at all 3 ports, reciprocal, outputs isolated,
+      and the 1→2/3 split lossless. The theorem's bill gets paid — but by whom?</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · even/odd technique -->
+<section class="slide">
+  <div class="kicker">1.4 The technique of the week</div>
+  <h2>Even/odd: mirror, cut, superpose</h2>
+  <p>Any drive of the symmetric pair = even part (+V, +V) + odd part (+V, −V):
+    (a₂, a₃) = ½(a₂+a₃)·(1,1) + ½(a₂−a₃)·(1,−1)</p>
+  <div class="cols" style="margin-top:1vh">
+    <div>
+      <svg viewBox="0 0 340 150" width="100%">
+        <text x="10" y="20" font-size="15" font-weight="700" fill="#0f62fe">EVEN (+V, +V)</text>
+        <line x1="20" y1="75" x2="320" y2="75" stroke="#0f62fe" stroke-width="2" stroke-dasharray="8 5"/>
+        <text x="200" y="66" font-size="13" fill="#0f62fe">mirror: no crossing current</text>
+        <text x="20" y="105" font-size="14">cut → leave <tspan font-weight="700">OPEN</tspan></text>
+        <text x="20" y="128" font-size="13" fill="#5b6472">(a magnetic wall) — R splits into two dangling R/2, carrying nothing</text>
+      </svg>
+    </div>
+    <div>
+      <svg viewBox="0 0 340 150" width="100%">
+        <text x="10" y="20" font-size="15" font-weight="700" fill="#b3261e">ODD (+V, −V)</text>
+        <line x1="20" y1="75" x2="320" y2="75" stroke="#b3261e" stroke-width="2"/>
+        <g stroke="#b3261e" stroke-width="2">
+          <line x1="160" y1="75" x2="160" y2="95"/><line x1="146" y1="95" x2="174" y2="95"/>
+          <line x1="151" y1="101" x2="169" y2="101"/><line x1="156" y1="107" x2="164" y2="107"/>
+        </g>
+        <text x="200" y="66" font-size="13" fill="#b3261e">mirror: zero volts</text>
+        <text x="20" y="120" font-size="14">cut → <tspan font-weight="700">GROUND</tspan> it</text>
+        <text x="20" y="141" font-size="13" fill="#5b6472">(an electric wall) — R's midpoint grounds: R/2 to ground each side</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box rule"><p>Solve two half-sized problems, then:&nbsp;
+    <span class="math inline">S₂₂ = ½(Γ<sub>e</sub> + Γ<sub>o</sub>), &nbsp; S₂₃ = ½(Γ<sub>e</sub> − Γ<sub>o</sub>)</span>.
+    That sum-and-difference line is the whole method — and it returns for lecture 9's coupled lines.</p></div>
+</section>
+
+<!-- 10 · wilkinson worked -->
+<section class="slide">
+  <div class="kicker">1.4 The Wilkinson, worked</div>
+  <h2>Even mode matches the arm; odd mode <em>is</em> the resistor</h2>
+  <div class="cols">
+    <div>
+      <p><em class="term">Even</em> (from output 2):</p>
+      <ul class="small" style="font-size:2.5vh">
+        <li>λ/4 of 70.7 Ω into 2Z₀ = 100 Ω</li>
+        <li>Z<sub>in</sub> = 70.7²/100 = <em class="term">50 Ω → Γ<sub>e</sub> = 0</em></li>
+        <li>R/2 dangles, both ends at equal volts:<br><em class="term">the resistor is invisible to the even mode</em></li>
+      </ul>
+      <p style="margin-top:2vh"><em class="term">Odd</em> (from output 2):</p>
+      <ul class="small" style="font-size:2.5vh">
+        <li>shorted λ/4 arm → open. Gone.</li>
+        <li>only R/2 to ground remains</li>
+        <li>match ⇔ R/2 = Z₀</li>
+      </ul>
+    </div>
+    <div>
+      <div class="box rule"><p class="big" style="text-align:center"><em class="term">R = 2Z₀ = 100 Ω</em></p>
+        <p class="small muted" style="text-align:center">not a tweak — the odd-mode match, full stop</p></div>
+      <div class="box"><p>Superpose: Γ<sub>e</sub> = Γ<sub>o</sub> = 0 →
+        S₂₂ = 0 and <em class="term">S₂₃ = 0: isolated outputs</em>.<br>
+        Input: two λ/4 branches → 100 Ω ∥ 100 Ω = 50 Ω → S₁₁ = 0.<br>
+        Through: <em class="term">S₂₁ = S₃₁ = −j/√2</em> — 3.01 dB at −90°.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · wilkinson S + theorem -->
+<section class="slide">
+  <div class="kicker">1.4 The Wilkinson vs the theorem</div>
+  <h2>Matched, reciprocal, isolated — so where is the loss?</h2>
+  <div class="cols">
+    <div>
+      <div class="math">
+        S(f₀) = <span class="mat m3"><span>0</span><span>−j/√2</span><span>−j/√2</span>
+        <span>−j/√2</span><span>0</span><span>0</span>
+        <span>−j/√2</span><span>0</span><span>0</span></span>
+      </div>
+      <p class="small muted" style="text-align:center">general (Z₂, R): Γ<sub>e</sub> = (Z₂²−2Z₀²)/(Z₂²+2Z₀²),
+      Γ<sub>o</sub> = (R−2Z₀)/(R+2Z₀), S₂₁ = −2jZ₀Z₂/(Z₂²+2Z₀²) — homework module 1</p>
+    </div>
+    <div>
+      <div class="box trap"><p><em class="term">‖SᴴS − I‖ = 1.000000 at f₀.</em> Not lossless — the theorem holds.
+        Hour 3 prints this number.</p></div>
+      <div class="box rule"><p>Drive port 1, balanced &amp; matched: pure even mode, no resistor current,
+        <em class="term">zero dissipation</em>. Drive an output: half crosses, the odd half
+        <em class="term">dies in R</em>. The loss is aimed at the excitations you never use —
+        imbalance and reflections. A bouncer, not a toll.</p></div>
+    </div>
+  </div>
+  <p class="small muted">War story: the 2 W isolation resistor that "never dissipates anything" — until one of two 100 W PAs (power amplifiers) died, and 50 W arrived. Rate the bouncer for the fight.</p>
+</section>
+
+<!-- 12 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>A matched, reciprocal, lossless three-port is a <em class="term">theorem-level impossibility</em> — pick two, and know which two your vendor picked.</li>
+    <li>Even/odd = mirror + superpose: even sees an <em class="term">open</em>, odd sees a <em class="term">short</em>; S-entries are half-sums and half-differences.</li>
+    <li>The Wilkinson hides the mandatory loss in a resistor <em class="term">only the odd mode can see</em> — R = 2Z₀ is the odd-mode match — and hands you −j/√2.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2: buy a fourth port instead — and the theorem changes sides.</p>
+</section>
+
+<!-- 13 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Four-Ports:<br>Couplers, Hybrids, and Where They Live</h1>
+  <p class="muted" style="margin-top:3vh">C, D, I said honestly · the 90° and 180° families · coupled lines · array feeds, balanced amps, monopulse</p>
+</section>
+
+<!-- 14 · directional coupler C/D/I -->
+<section class="slide">
+  <div class="kicker">2.1 The directional coupler</div>
+  <h2>C, D, I — three numbers, one identity</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 360 170" width="100%">
+        <rect x="60" y="45" width="240" height="80" rx="10" fill="#eef2f7" stroke="#5b6472"/>
+        <g stroke="#1a1f2b" stroke-width="3">
+          <line x1="10" y1="65" x2="60" y2="65"/><line x1="300" y1="65" x2="350" y2="65"/>
+          <line x1="10" y1="105" x2="60" y2="105"/><line x1="300" y1="105" x2="350" y2="105"/>
+        </g>
+        <g font-size="13" fill="#1a1f2b">
+          <text x="8" y="58">1 · input</text><text x="288" y="58">2 · through</text>
+          <text x="8" y="145">4 · isolated</text><text x="272" y="145">3 · coupled</text>
+        </g>
+        <path d="M85 65 L275 65" stroke="#0f62fe" stroke-width="2.5" marker-end="none"/>
+        <path d="M275 105 Q 180 85 85 65" stroke="#0f62fe" stroke-width="2" stroke-dasharray="6 4" fill="none"/>
+        <text x="150" y="100" font-size="12" fill="#0f62fe">a whisper crosses</text>
+      </svg>
+      <div class="box rule" style="margin-top:1.2vh"><p style="text-align:center"><em class="term">I = C + D</em></p></div>
+    </div>
+    <div>
+      <p class="small" style="font-size:2.5vh">
+        <em class="term">Coupling</em> C = −20·log|S₃₁| — how big the tap is (3, 10, 20 dB)<br><br>
+        <em class="term">Isolation</em> I = −20·log|S₄₁| — total leakage to the quiet port<br><br>
+        <em class="term">Directivity</em> D = I − C — how well it tells forward from backward. <em>The</em> quality number.</p>
+      <div class="box trap"><p><em class="term">"Isolation = directivity" is wrong</em> for any coupler
+        whose coupling isn't 0 dB. They differ by exactly C.</p></div>
+    </div>
+  </div>
+  <p class="small muted">Bonus theorem: a matched, reciprocal, lossless <em>four</em>-port is possible — and is necessarily a directional coupler. What three ports forbid, four ports mandate.</p>
+</section>
+
+<!-- 15 · directivity in the wild -->
+<section class="slide">
+  <div class="kicker">2.1 Directivity in the wild</div>
+  <h2>D is the ceiling of what a reflectometer can certify</h2>
+  <div class="cols">
+    <div>
+      <p>Coupled port hears two things:</p>
+      <ul>
+        <li>the echo: reflected wave via C — <span class="muted">the signal</span></li>
+        <li>the forward wave via I = C + D — <span class="muted">the leakage</span></li>
+      </ul>
+      <div class="box rule"><p>Leakage = echo when <em class="term">RL (return loss) = D</em>.
+        Readings beyond D are fiction — the phasor sum can say anything.</p></div>
+    </div>
+    <div>
+      <table style="font-size:2.6vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.5vh 2vh">technology</td><td style="padding:.5vh 2vh">typical D</td></tr>
+        <tr><td style="padding:.5vh 2vh">machined waveguide</td><td style="padding:.5vh 2vh">30–40 dB</td></tr>
+        <tr><td style="padding:.5vh 2vh">stripline</td><td style="padding:.5vh 2vh">20–30 dB</td></tr>
+        <tr style="background:#fdecea"><td style="padding:.5vh 2vh">edge-coupled microstrip</td><td style="padding:.5vh 2vh"><em class="term">10–15 dB</em></td></tr>
+      </table>
+      <p class="small muted" style="margin-top:1.5vh">Why microstrip is the sad row: §2.4. Lecture 9 pays the bill.</p>
+    </div>
+  </div>
+  <div class="box"><p class="small">War story: a 12-dB-directivity reflectometer read a "26 dB" return loss at site acceptance.
+    A proper bridge later: 14 dB. Nobody lied — at RL ≈ D the echo and the leakage are the same size.</p></div>
+</section>
+
+<!-- 16 · branch-line -->
+<section class="slide">
+  <div class="kicker">2.2 The branch-line hybrid</div>
+  <h2>A square of quarter-waves — even/odd, second performance</h2>
+  <div class="cols">
+    <div style="flex:1.2">
+      <svg viewBox="0 0 400 250" width="100%">
+        <g stroke="#0f62fe" stroke-width="6">
+          <line x1="100" y1="60" x2="300" y2="60"/>
+          <line x1="100" y1="190" x2="300" y2="190"/>
+        </g>
+        <g stroke="#1a1f2b" stroke-width="4">
+          <line x1="100" y1="60" x2="100" y2="190"/>
+          <line x1="300" y1="60" x2="300" y2="190"/>
+        </g>
+        <g stroke="#1a1f2b" stroke-width="2.5">
+          <line x1="40" y1="60" x2="100" y2="60"/><line x1="300" y1="60" x2="360" y2="60"/>
+          <line x1="40" y1="190" x2="100" y2="190"/><line x1="300" y1="190" x2="360" y2="190"/>
+        </g>
+        <g font-size="14" fill="#1a1f2b">
+          <text x="30" y="48">1 in</text><text x="330" y="48">2 through</text>
+          <text x="14" y="212">4 isolated</text><text x="308" y="212">3 coupled</text>
+        </g>
+        <text x="152" y="46" font-size="14" fill="#0f62fe">λ/4 · Z₀/√2 = 35.4 Ω</text>
+        <text x="152" y="222" font-size="14" fill="#0f62fe">λ/4 · 35.4 Ω</text>
+        <text x="48" y="130" font-size="14">λ/4 · Z₀</text>
+        <text x="308" y="130" font-size="14">λ/4 · Z₀</text>
+        <line x1="40" y1="125" x2="360" y2="125" stroke="#b3261e" stroke-width="1.5" stroke-dasharray="7 5"/>
+        <text x="180" y="118" font-size="12" fill="#b3261e">bisect here</text>
+      </svg>
+    </div>
+    <div>
+      <p class="small" style="font-size:2.5vh">Same ritual: bisect; even → λ/8 <em class="term">open</em> stubs (+jY₀), odd → λ/8 <em class="term">shorted</em> stubs (−jY₀); each half is a two-port, carry Γ and T:</p>
+      <div class="math" style="font-size:2.7vh">S₁₁ = ½(Γₑ+Γₒ) · S₂₁ = ½(Tₑ+Tₒ)<br>S₃₁ = ½(Tₑ−Tₒ) · S₄₁ = ½(Γₑ−Γₒ)</div>
+      <p class="small muted">Both halves reflectionless; Tₑ = −(1+j)/√2, Tₒ = (1−j)/√2.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · branch-line result -->
+<section class="slide">
+  <div class="kicker">2.2 The branch-line hybrid</div>
+  <h2>The quadrature fingerprint — and the bandwidth bill</h2>
+  <div class="cols">
+    <div>
+      <div class="math">S₁₁ = 0 &nbsp; S₂₁ = −j/√2 &nbsp; S₃₁ = −1/√2 &nbsp; S₄₁ = 0</div>
+      <div class="box rule"><p>Equal 3.01 dB split, outputs <em class="term">90° apart</em> —
+        the quadrature (90°) hybrid. Which input condition nulls what: §2.3, and homework Q2.</p></div>
+    </div>
+    <div>
+      <p>Everything leaned on "λ/4 <em>at f₀</em>." Hour 3 measures the decay:</p>
+      <ul class="small" style="font-size:2.5vh">
+        <li>balance within 0.5 dB: 9.10–10.90 GHz — <em class="term">18% fractional bandwidth</em></li>
+        <li>directivity at 9.5 GHz: <em class="term">17.6 dB</em>; at 8 GHz: 6.8 dB</li>
+      </ul>
+      <div class="box"><p class="small">Hybrids are narrowband creatures. Multisection versions buy octaves —
+        lecture 6's Chebyshev instinct, applied to couplers.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · rat-race -->
+<section class="slide">
+  <div class="kicker">2.3 The 180° family</div>
+  <h2>The rat-race — Σ and Δ are born</h2>
+  <div class="cols">
+    <div style="flex:1.1">
+      <svg viewBox="0 0 360 260" width="100%">
+        <circle cx="180" cy="130" r="85" fill="none" stroke="#0f62fe" stroke-width="6"/>
+        <g stroke="#1a1f2b" stroke-width="2.5">
+          <line x1="180" y1="45" x2="180" y2="10"/>
+          <line x1="95" y1="130" x2="55" y2="130"/>
+          <line x1="265" y1="130" x2="305" y2="130"/>
+          <line x1="180" y1="215" x2="180" y2="250"/>
+        </g>
+        <g font-size="14">
+          <text x="190" y="18" fill="#0f62fe" font-weight="700">1 · Σ (sum)</text>
+          <text x="10" y="122">2 · in a</text>
+          <text x="310" y="122">3 · in b</text>
+          <text x="190" y="248" fill="#b3261e" font-weight="700">4 · Δ (difference)</text>
+        </g>
+        <text x="118" y="70" font-size="13" fill="#5b6472">λ/4</text>
+        <text x="232" y="70" font-size="13" fill="#5b6472">λ/4</text>
+        <text x="118" y="200" font-size="13" fill="#5b6472">λ/4</text>
+        <text x="225" y="200" font-size="13" fill="#b3261e">3λ/4</text>
+        <text x="132" y="134" font-size="13" fill="#5b6472">ring: √2·Z₀</text>
+      </svg>
+    </div>
+    <div>
+      <p>Drive ports 2 and 3 with a and b:</p>
+      <div class="math" style="font-size:3vh">port 1 → (a + b)/√2 = <em class="term">Σ</em><br>
+        port 4 → (b − a)/√2 = <em class="term">Δ</em></div>
+      <div class="box rule"><p>Equal, in-phase inputs: Σ takes everything, Δ takes
+        <em class="term">exactly nothing</em> — the most valuable zero in radar (§2.5).</p></div>
+      <p class="small muted">Waveguide twin: the magic tee (E-arm/H-arm) — same algebra, different plumbing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 19 · 90 vs 180 taxonomy -->
+<section class="slide">
+  <div class="kicker">2.3 The taxonomy that matters</div>
+  <h2>90° hybrids and 180° hybrids are different tools</h2>
+  <div class="cols">
+    <div>
+      <div class="box"><p><em class="term">90° family</em> — branch-line, coupled-line, Lange</p>
+        <p class="small muted">outputs in quadrature; reflections cancel toward the isolated port —
+        balanced amplifiers live here (L11)</p></div>
+    </div>
+    <div>
+      <div class="box"><p><em class="term">180° family</em> — rat-race, magic tee</p>
+        <p class="small muted">outputs in/anti phase; sums and differences —
+        monopulse comparators live here (L16)</p></div>
+    </div>
+  </div>
+  <div class="box trap">
+    <p>Both split 3 dB. What differs is the phase the two internal paths carry — and therefore
+    <em class="term">which input condition produces the null</em>. Homework Q2 asks you to predict
+    a 90° hybrid's null position <em>before</em> the code answers. Commit in ink.</p>
+  </div>
+</section>
+
+<!-- 20 · coupled lines -->
+<section class="slide">
+  <div class="kicker">2.4 Coupled-line couplers</div>
+  <h2>Two traces, close together — even/odd impedances as the design space</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 360 170" width="100%">
+        <rect x="20" y="120" width="320" height="12" fill="#5b6472"/>
+        <rect x="20" y="100" width="320" height="20" fill="#e8f0fe"/>
+        <rect x="110" y="88" width="60" height="12" rx="2" fill="#b3261e"/>
+        <rect x="190" y="88" width="60" height="12" rx="2" fill="#b3261e"/>
+        <text x="118" y="82" font-size="13">line a</text>
+        <text x="198" y="82" font-size="13">line b</text>
+        <text x="24" y="114" font-size="12" fill="#5b6472">substrate ε_r</text>
+        <text x="255" y="146" font-size="12" fill="#5b6472">ground plane</text>
+        <path d="M172 94 Q 180 80 188 94" stroke="#0f62fe" stroke-width="2" fill="none"/>
+        <text x="150" y="30" font-size="14" fill="#0f62fe">even: +V +V → Z₀ₑ</text>
+        <text x="150" y="52" font-size="14" fill="#b3261e">odd: +V −V → Z₀ₒ &lt; Z₀ₑ</text>
+      </svg>
+      <p class="small muted">Different field pictures → different impedances. That pair <em>is</em> the coupler.</p>
+    </div>
+    <div>
+      <div class="math" style="font-size:2.9vh">match ⇔ Z₀ₑ·Z₀ₒ = Z₀² &nbsp;·&nbsp; C₀ = (Z₀ₑ−Z₀ₒ)/(Z₀ₑ+Z₀ₒ)</div>
+      <table style="font-size:2.5vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 1.6vh">C</td><td style="padding:.4vh 1.6vh">Z₀ₑ</td><td style="padding:.4vh 1.6vh">Z₀ₒ</td><td></td></tr>
+        <tr><td style="padding:.4vh 1.6vh">20 dB</td><td style="padding:.4vh 1.6vh">55.3 Ω</td><td style="padding:.4vh 1.6vh">45.2 Ω</td><td class="muted small">easy</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">10 dB</td><td style="padding:.4vh 1.6vh">69.4 Ω</td><td style="padding:.4vh 1.6vh">36.0 Ω</td><td class="muted small">intimate</td></tr>
+        <tr style="background:#fdecea"><td style="padding:.4vh 1.6vh">3 dB</td><td style="padding:.4vh 1.6vh">120.7 Ω</td><td style="padding:.4vh 1.6vh">20.7 Ω</td><td class="small"><em class="term">unbuildable</em> → Lange</td></tr>
+      </table>
+      <div class="box trap" style="margin-top:1.2vh"><p class="small">Microstrip's even and odd modes travel at
+        <em class="term">different speeds</em> (odd lives more in air) → imperfect cancellation →
+        the 10–15 dB directivity of §2.1. Stripline (true TEM — transverse electromagnetic) is immune. Lecture 9 inherits both the gift and the bill.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 21 · applications: feed + balanced amp -->
+<section class="slide">
+  <div class="kicker">2.5 Where they live</div>
+  <h2>Corporate feeds and balanced amplifiers</h2>
+  <div class="cols">
+    <div>
+      <div class="box"><p><em class="term">Corporate array feed</em> — the homework</p>
+        <p class="small muted">three Wilkinsons, equal path lengths, isolation contains each element's
+        reflections. Errors grow with tree <em>depth</em> (log₂N), not element count — Q1 makes you
+        predict how, in ink, before the instrument shows you.</p></div>
+    </div>
+    <div>
+      <div class="box"><p><em class="term">Balanced amplifier</em> — lecture 11's escape hatch</p>
+        <p class="small muted">two amplifier copies between two quadrature hybrids: each amp's
+        <em>reflection</em> routes to the terminated port, not the input. The pair is matched even though
+        each half is not — the hybrid's resistor quietly eats the difference.</p></div>
+    </div>
+  </div>
+  <div class="box rule"><p>Same two parts, two industries: the Wilkinson feeds apertures; the 90° hybrid
+    launders reflections. Both are "aim the loss at the signal you never want."</p></div>
+</section>
+
+<!-- 22 · monopulse comparator -->
+<section class="slide">
+  <div class="kicker">2.5 The radar tie-in</div>
+  <h2>The monopulse comparator — angle from a single pulse</h2>
+  <div class="cols">
+    <div style="flex:1.25">
+      <svg viewBox="0 0 430 250" width="100%">
+        <g font-size="14" text-anchor="middle">
+          <rect x="15" y="20" width="52" height="42" rx="6" fill="#e8f0fe" stroke="#0f62fe"/><text x="41" y="46">A</text>
+          <rect x="15" y="75" width="52" height="42" rx="6" fill="#e8f0fe" stroke="#0f62fe"/><text x="41" y="101">B</text>
+          <rect x="15" y="130" width="52" height="42" rx="6" fill="#e8f0fe" stroke="#0f62fe"/><text x="41" y="156">C</text>
+          <rect x="15" y="185" width="52" height="42" rx="6" fill="#e8f0fe" stroke="#0f62fe"/><text x="41" y="211">D</text>
+        </g>
+        <g font-size="12" text-anchor="middle">
+          <rect x="120" y="42" width="80" height="50" rx="8" fill="#eef2f7" stroke="#5b6472"/>
+          <text x="160" y="63">180° hybrid</text><text x="160" y="80">A±B</text>
+          <rect x="120" y="152" width="80" height="50" rx="8" fill="#eef2f7" stroke="#5b6472"/>
+          <text x="160" y="173">180° hybrid</text><text x="160" y="190">C±D</text>
+          <rect x="255" y="42" width="80" height="50" rx="8" fill="#eef2f7" stroke="#5b6472"/>
+          <text x="295" y="63">180° hybrid</text><text x="295" y="80">sums</text>
+          <rect x="255" y="152" width="80" height="50" rx="8" fill="#eef2f7" stroke="#5b6472"/>
+          <text x="295" y="173">180° hybrid</text><text x="295" y="190">diffs</text>
+        </g>
+        <g stroke="#5b6472" stroke-width="2" fill="none">
+          <path d="M67 41 L120 57"/><path d="M67 96 L120 77"/>
+          <path d="M67 151 L120 167"/><path d="M67 206 L120 187"/>
+          <path d="M200 57 L255 57"/><path d="M200 167 L255 167"/>
+          <path d="M200 77 Q 228 120 255 187"/><path d="M200 187 Q 228 120 255 77"/>
+        </g>
+        <g font-size="14" font-weight="700">
+          <text x="345" y="52" fill="#0f62fe">Σ = A+B+C+D</text>
+          <text x="345" y="90" fill="#b3261e">Δ_el</text>
+          <text x="345" y="162" fill="#b3261e">Δ_az</text>
+          <text x="345" y="200" fill="#5b6472">(load)</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <ul class="small" style="font-size:2.5vh">
+        <li>Four antenna quadrants, four 180° hybrids</li>
+        <li>Boresight: both Δ ports are <em class="term">nulls</em></li>
+        <li>Off axis: the subtraction un-cancels; <em class="term">Δ/Σ reads the angle error</em> — sign and size, one pulse</li>
+      </ul>
+      <div class="box rule"><p class="small">The null is sharper than the beam — how fire-control radars
+        track to a fraction of a beamwidth. Software version: lecture 16.</p></div>
+      <p class="small muted" style="margin-top:1vh">Δ_az / Δ_el: azimuth / elevation difference channels.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 23 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.6 Recap</div>
+  <h2>Hour 2 in four sentences</h2>
+  <ul class="big">
+    <li>Four-ports legalize what three-ports forbid — and the legal device is exactly the <em class="term">directional coupler</em>.</li>
+    <li><em class="term">I = C + D</em>: C is the tap's size, D its honesty — never let a datasheet blur them.</li>
+    <li>The <em class="term">90° family</em> and the <em class="term">180° family</em> split identically and null differently.</li>
+    <li>Coupled lines make even/odd <em class="term">impedances</em> the design variables — lecture 9's filters are waiting.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3: a Wilkinson in nine lines of scikit-rf, the board work refereed to 16 decimals — then we sabotage the resistor.</p>
+</section>
+
+<!-- 24 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in scikit-rf Circuit — every claim becomes a printed number</h2>
+  <ul>
+    <li>Circuit anatomy — media make elements, connections wire them; port order = <em class="term">appearance order</em> (verified against the installed wheel)</li>
+    <li>The hand even/odd formulas vs the assembled Wilkinson: <em class="term">agreement ~2e-16</em>, healthy and broken designs alike</li>
+    <li>The sweep — 36% bandwidth at 20 dB, and the theorem's fingerprint: <em class="term">‖SᴴS − I‖ = 1.000000</em></li>
+    <li>The branch-line — 90.0° verified; the C/D/I table with <em class="term">I = C + D</em> in every row</li>
+    <li>The monopulse teaser — boresight reads −3 dB/−3 dB, and the Δ null hides at ψ = 90° (ψ = the two antenna signals' relative phase; at the null: equal amplitudes, <em class="term">180.000000° apart</em>)</li>
+    <li>The deliberate bug — the isolation resistor doubled: input match survives <em>exactly</em>; isolation collapses to <em class="term">−15.56 dB</em>. A one-port bench check would ship it.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> —
+  Q1 (imbalance vs tree depth) and Q2 (where the 90° null lives) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 7 · Power Dividers &amp; Couplers · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

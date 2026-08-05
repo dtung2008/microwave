@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 5 · Principles — Planar Lines &amp; Waveguides</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 5 · Hours 1–2</div>
+  <h1>Planar Lines &amp; Waveguides<br>Where Transmission Lines Physically Live</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: Hammerstad vs scikit-rf, waveguide dispersion, a wave refused → homework: design the board, spec the pipe</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer, <em>Microwave and RF Design</em> Vol. 2, ch. 4–5 (free) · Pozar ch. 3 · Wheeler 1965</p>
+</section>
+
+<!-- 2 · the debt -->
+<section class="slide">
+  <div class="kicker">1.1 Where the lines live</div>
+  <h2>Four lectures of abstraction come due today</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box"><p><em class="term">Microstrip</em></p><p class="small muted">a strip on a PCB (printed circuit board) — the workhorse; every MMIC (monolithic microwave IC) sits on one</p></div>
+    <div class="box"><p><em class="term">CPW (coplanar waveguide) · stripline</em></p><p class="small muted">the planar cousins — one slide each, each with one virtue</p></div>
+    <div class="box"><p><em class="term">Rectangular waveguide</em></p><p class="small muted">a hollow pipe: lowest loss, highest power, radar's favorite</p></div>
+  </div>
+  <div class="box rule"><p>Lecture 2 gave you Z₀ and γ but never said what the line was <em>made of</em>.
+    Lecture 3's λ/4 transformer never had a length in millimeters. Today: copper, epoxy, ceramic, air —
+    and every abstraction priced in mm and dB.</p></div>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Where the lines live</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">A "50 Ω trace" is a geometry problem.</em><br>
+      <span class="muted">Width over height over permittivity. Today you compute the width: 1.11 mm on our board.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">The wavelength obeys a permittivity that does not exist.</em><br>
+      <span class="muted">ε_eff — a weighted average of board and air. Use ε_r instead and every stub lands 13% short. Hour 3 does it on purpose.</span></li>
+    <li><em class="term">A hollow pipe out-guides every cable — above its cutoff.</em><br>
+      <span class="muted">f_c = c/2a. Below: the wave is refused. Just above: dispersion turns on you. We price both.</span></li>
+  </ol>
+</section>
+
+<!-- 4 · microstrip cross-section -->
+<section class="slide">
+  <div class="kicker">1.2 The microstrip</div>
+  <h2>The cross-section — fields in two worlds at once</h2>
+  <div class="cols">
+    <div style="flex:1.5">
+      <svg viewBox="0 0 520 280" width="100%">
+        <!-- air label -->
+        <text x="70" y="40" font-size="15" fill="#5b6472">air, ε₀</text>
+        <!-- substrate -->
+        <rect x="40" y="130" width="440" height="80" fill="#e8f0fe"/>
+        <text x="52" y="150" font-size="15" fill="#1a1f2b" text-anchor="start">substrate ε_r = 3.48</text>
+        <!-- ground plane -->
+        <rect x="40" y="210" width="440" height="14" fill="#1a1f2b"/>
+        <text x="250" y="245" font-size="15" fill="#5b6472">ground plane</text>
+        <!-- strip -->
+        <rect x="200" y="116" width="120" height="14" fill="#1a1f2b"/>
+        <!-- field lines under the strip (through dielectric) -->
+        <g stroke="#0f62fe" stroke-width="2" fill="none">
+          <line x1="220" y1="130" x2="220" y2="210"/>
+          <line x1="245" y1="130" x2="245" y2="210"/>
+          <line x1="270" y1="130" x2="270" y2="210"/>
+          <line x1="295" y1="130" x2="295" y2="210"/>
+        </g>
+        <!-- fringing field lines through air, re-entering substrate -->
+        <g stroke="#0f62fe" stroke-width="2" fill="none" stroke-dasharray="6 4">
+          <path d="M320 121 C 375 105, 400 150, 392 210"/>
+          <path d="M320 116 C 400 78, 452 150, 440 210"/>
+          <path d="M200 121 C 145 105, 120 150, 128 210"/>
+          <path d="M200 116 C 120 78, 68 150, 80 210"/>
+          <path d="M260 116 C 260 90, 335 92, 348 210"/>
+        </g>
+        <!-- dimensions -->
+        <g font-size="15" fill="#b3261e">
+          <line x1="200" y1="100" x2="320" y2="100" stroke="#b3261e" stroke-width="1.5"/>
+          <text x="252" y="93">w</text>
+          <line x1="332" y1="116" x2="332" y2="130" stroke="#b3261e" stroke-width="1.5"/>
+          <text x="340" y="128">t</text>
+          <line x1="465" y1="130" x2="465" y2="210" stroke="#b3261e" stroke-width="1.5"/>
+          <text x="452" y="175">h</text>
+        </g>
+        <text x="330" y="60" font-size="14" fill="#0f62fe">fringing field — lives in AIR</text>
+        <text x="260" y="270" font-size="14" fill="#5b6472" text-anchor="middle">solid: field in the dielectric · dashed: fringing field through the air</text>
+      </svg>
+    </div>
+    <div>
+      <div class="box"><p class="small">Printed, not machined. Solderable — which is why the whole
+        front-end lives on it.</p></div>
+      <div class="box rule"><p class="small">The wave straddles two media → it settles on a
+        <em class="term">compromise speed</em> v = c/√ε<sub>eff</sub>. Our board: h = 0.508 mm,
+        t = 35 μm copper, tan δ = 0.0037 (RO4350B).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · eps_eff -->
+<section class="slide">
+  <div class="kicker">1.2 The compromise</div>
+  <h2>ε<sub>eff</sub> — a filling factor, not a material</h2>
+  <div class="math">ε<sub>eff</sub> ≡ C/C<sub>air</sub> &nbsp;&nbsp;·&nbsp;&nbsp; (ε<sub>r</sub>+1)/2 &nbsp;≤&nbsp; ε<sub>eff</sub> &nbsp;≤&nbsp; ε<sub>r</sub></div>
+  <ul>
+    <li>Same geometry's capacitance <em class="term">with</em> and <em class="term">without</em> the dielectric — "how much the board actually helped."</li>
+    <li>Very wide strip: field buried in the board → ε<sub>eff</sub> → ε<sub>r</sub>. Vanishing strip: field split evenly with the air → (ε<sub>r</sub>+1)/2.</li>
+    <li>Our 50 Ω line: <em class="term">ε<sub>eff</sub> = 2.74</em> between floor 2.24 and ceiling 3.48.</li>
+  </ul>
+  <div class="box rule">
+    <p><em class="term">"Quasi-TEM" is a legal lie.</em> True TEM (transverse electromagnetic — E, H both ⊥ travel)
+    can't straddle two media (it would need two speeds at once); the real mode grows tiny longitudinal fields.
+    On a thin board (h ≪ λ: 0.508 mm is λ/33 at 20 GHz) they are second-order small — the lie holds, then
+    fails <em>gracefully</em>: dispersion (slide 9).</p>
+  </div>
+</section>
+
+<!-- 6 · Hammerstad analysis -->
+<section class="slide">
+  <div class="kicker">1.3 Hammerstad</div>
+  <h2>Analysis: geometry → electricals &nbsp;<span class="muted small">(u = w/h)</span></h2>
+  <div class="box rule">
+    <p class="math" style="margin:.6vh 0">ε<sub>eff</sub> = (ε<sub>r</sub>+1)/2 + (ε<sub>r</sub>−1)/2 · (1 + 12/u)<sup>−1/2</sup></p>
+    <p class="math" style="margin:.6vh 0">u ≤ 1: &nbsp; Z₀ = (60/√ε<sub>eff</sub>) · ln(8/u + u/4)</p>
+    <p class="math" style="margin:.6vh 0">u ≥ 1: &nbsp; Z₀ = 120π / [√ε<sub>eff</sub> · (u + 1.393 + 0.667·ln(u + 1.444))]</p>
+  </div>
+  <ul class="small" style="margin-top:2vh">
+    <li>Not arbitrary: a <em class="term">curve fit to Wheeler's exact conformal map</em> (1965). Narrow limit = a wire over a plane (the ln); wide limit = parallel plate + fringing.</li>
+    <li>Real copper is 35 μm thick — Wheeler's correction: <span class="math inline">w<sub>eff</sub> = w + (t/π)(1 + ln(2h/t))</span> = +49 μm here. Moves Z₀ ~1 Ω; the homework's 2% referee notices.</li>
+  </ul>
+</section>
+
+<!-- 7 · synthesis worked -->
+<section class="slide">
+  <div class="kicker">1.3 Hammerstad</div>
+  <h2>Synthesis: "give me 50 Ω" — worked to copper</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.6vh; border-collapse:collapse; margin-top:1vh">
+        <tr class="muted small"><td style="padding:.5vh 2vh"></td><td style="padding:.5vh 2vh">RO4350B</td><td style="padding:.5vh 2vh">FR-4</td></tr>
+        <tr><td style="padding:.5vh 2vh">ε_r</td><td style="padding:.5vh 2vh">3.48</td><td style="padding:.5vh 2vh">4.4</td></tr>
+        <tr style="background:#e8f0fe"><td style="padding:.5vh 2vh"><em class="term">w (50 Ω)</em></td><td style="padding:.5vh 2vh"><em class="term">1.1131 mm</em></td><td style="padding:.5vh 2vh">0.9302 mm</td></tr>
+        <tr><td style="padding:.5vh 2vh">ε_eff</td><td style="padding:.5vh 2vh">2.7361</td><td style="padding:.5vh 2vh">3.3323</td></tr>
+        <tr><td style="padding:.5vh 2vh">λ_g at 10 GHz</td><td style="padding:.5vh 2vh">18.12 mm</td><td style="padding:.5vh 2vh">16.42 mm</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box rule"><p class="small">Two blessed routes: Pozar's closed-form A/B inversion, or a
+        <em class="term">numeric root on your own analysis</em> (find w where Z₀(w) = 50).
+        Root-finding on a trusted forward model is how every real tool does synthesis.</p></div>
+      <div class="box"><p class="small">Higher Z₀ = narrower strip (more L, less C). Low-Z wide, high-Z skinny —
+        lecture 9 turns this into a filter language.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · lambda/4 physical -->
+<section class="slide">
+  <div class="kicker">1.3 The transformer gets a body</div>
+  <h2>Lecture 3's λ/4, now in millimeters</h2>
+  <div class="cols">
+    <div>
+      <p>Match the 100 Ω antenna feed: Z<sub>T</sub> = √(50·100) = 70.71 Ω</p>
+      <table style="font-size:2.6vh; border-collapse:collapse; margin-top:1.5vh">
+        <tr><td style="padding:.4vh 2vh">width</td><td style="padding:.4vh 2vh"><em class="term">0.582 mm</em></td><td class="muted small">narrower than 50 Ω</td></tr>
+        <tr><td style="padding:.4vh 2vh">ε_eff</td><td style="padding:.4vh 2vh">2.620</td><td class="muted small">its own — not the 50 Ω line's!</td></tr>
+        <tr style="background:#e8f0fe"><td style="padding:.4vh 2vh"><em class="term">length</em></td><td style="padding:.4vh 2vh"><em class="term">4.6305 mm</em></td><td class="muted small">λ_g/4 at 10 GHz</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:2vh">First matching network this course has ever quoted in mm. Not the last.</p>
+    </div>
+    <div>
+      <div class="box trap">
+        <p><em class="term">The classic bug:</em> compute λ with ε_r = 3.48 instead of ε_eff = 2.62 →
+        L = 4.018 mm — <span class="warn">13% short</span>, resonates at 11.5 GHz instead of 10.
+        Nothing crashes. The board gets made. Hour 3 re-enacts it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · dispersion -->
+<section class="slide">
+  <div class="kicker">1.4 Dispersion</div>
+  <h2>When the quasi-TEM lie catches up</h2>
+  <div class="cols">
+    <div>
+      <p>As f rises the field retreats from the air fringe into the substrate → ε<sub>eff</sub> climbs toward ε<sub>r</sub>:</p>
+      <table style="font-size:2.6vh; border-collapse:collapse; margin-top:1.5vh">
+        <tr class="muted small"><td style="padding:.4vh 2vh">f</td><td style="padding:.4vh 2vh">ε_eff (skrf, Kirschning–Jansen)</td></tr>
+        <tr><td style="padding:.4vh 2vh">1 GHz</td><td style="padding:.4vh 2vh">2.709</td></tr>
+        <tr><td style="padding:.4vh 2vh">10 GHz</td><td style="padding:.4vh 2vh">2.747</td></tr>
+        <tr><td style="padding:.4vh 2vh">20 GHz</td><td style="padding:.4vh 2vh">2.810</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:1.5vh">Quasi-static hand value 2.736: within 1% to ≈13 GHz on this stackup.</p>
+    </div>
+    <div>
+      <div class="box rule"><p><em class="term">Thin boards buy you quasi-TEM.</em> h = 0.508 mm keeps the mode
+        honest through X-band — that is <em>why</em> the course board is a 20-mil core.</p></div>
+      <div class="box trap"><p class="small">Cut lengths for ε<sub>eff</sub> at your <em class="term">operating</em>
+        frequency, not at DC. Lecture 9's war story: a fabricated filter 4% low — every length cut for the DC value.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · CPW and stripline -->
+<section class="slide">
+  <div class="kicker">1.4 The cousins</div>
+  <h2>CPW and stripline — one virtue each</h2>
+  <div class="cols">
+    <div>
+      <p><em class="term">CPW (coplanar waveguide)</em></p>
+      <svg viewBox="0 0 300 110" width="90%">
+        <rect x="10" y="55" width="280" height="40" fill="#e8f0fe"/>
+        <rect x="10" y="45" width="90" height="10" fill="#1a1f2b"/>
+        <rect x="128" y="45" width="44" height="10" fill="#1a1f2b"/>
+        <rect x="200" y="45" width="90" height="10" fill="#1a1f2b"/>
+        <text x="108" y="38" font-size="13" fill="#b3261e">gap</text>
+        <text x="140" y="30" font-size="13">signal</text>
+        <text x="30" y="30" font-size="13" fill="#5b6472">ground</text>
+        <text x="230" y="30" font-size="13" fill="#5b6472">ground</text>
+      </svg>
+      <ul class="small">
+        <li>Ground on the <em>top</em> surface — always one bond-wire away (MMICs love it)</li>
+        <li>Z₀ set by gap/width ratio — an extra degree of freedom</li>
+        <li>Price: more conductor edge → more conductor loss</li>
+      </ul>
+    </div>
+    <div>
+      <p><em class="term">Stripline</em></p>
+      <svg viewBox="0 0 300 110" width="90%">
+        <rect x="10" y="20" width="280" height="75" fill="#e8f0fe"/>
+        <rect x="10" y="10" width="280" height="10" fill="#1a1f2b"/>
+        <rect x="10" y="95" width="280" height="10" fill="#1a1f2b"/>
+        <rect x="120" y="52" width="60" height="9" fill="#1a1f2b"/>
+        <text x="200" y="48" font-size="13">buried trace</text>
+      </svg>
+      <ul class="small">
+        <li>Homogeneous sandwich → <em class="term">true TEM</em>: ε<sub>eff</sub> = ε<sub>r</sub>, no microstrip-style dispersion, fully shielded</li>
+        <li>Price: you can't solder to a buried layer — routing, not components</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box rule"><p class="small">Decision in one line: components on microstrip · dense shielded routing on stripline · MMIC interfaces on CPW.</p></div>
+</section>
+
+<!-- 11 · substrate market -->
+<section class="slide">
+  <div class="kicker">1.4 The substrate market</div>
+  <h2>The board is a component — with a datasheet</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.6vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.5vh 2vh"></td><td style="padding:.5vh 2vh">FR-4</td><td style="padding:.5vh 2vh">RO4350B</td></tr>
+        <tr><td style="padding:.5vh 2vh">ε_r</td><td style="padding:.5vh 2vh">≈4.4 (±0.2 by lot!)</td><td style="padding:.5vh 2vh">3.48 ± 0.05</td></tr>
+        <tr style="background:#fdecea"><td style="padding:.5vh 2vh">tan δ at 10 GHz</td><td style="padding:.5vh 2vh"><em class="term">0.02</em></td><td style="padding:.5vh 2vh"><em class="term">0.0037</em></td></tr>
+        <tr><td style="padding:.5vh 2vh">cost</td><td style="padding:.5vh 2vh">the free option</td><td style="padding:.5vh 2vh">several × more</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:1.5vh">tan δ (loss tangent) = fraction of stored field energy the dielectric burns per radian.</p>
+    </div>
+    <div>
+      <div class="box trap">
+        <p>The teaser hour 2 will price in full: 30 cm of 50 Ω trace at 10 GHz loses
+        <em class="term">1.5 dB</em> to dielectric on RO4350B — and <span class="warn">9.0 dB on FR-4</span>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in four sentences</h2>
+  <ul class="big">
+    <li>50 Ω is geometry: <em class="term">1.1131 mm</em> on this board — and you can compute it.</li>
+    <li>The wavelength obeys <em class="term">ε<sub>eff</sub> = 2.74</em>, a filling factor — so λ/4 = 4.63 mm, not 4.02.</li>
+    <li>Quasi-TEM holds to ~1% up to 13 GHz on a thin board; dispersion is the lie unraveling <em class="term">slowly</em>.</li>
+    <li>FR-4 at X-band burns <em class="term">6×</em> the dielectric loss of Rogers — the substrate is a component.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2 removes the board — and the center conductor — entirely.</p>
+</section>
+
+<!-- 13 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>The Hollow Pipe</h1>
+  <p class="muted" style="margin-top:3vh">Why no-conductor guides · cutoff and the mode zoo · the ω-β diagram and the price of dispersion · the loss shootout</p>
+</section>
+
+<!-- 14 · why pipes guide -->
+<section class="slide">
+  <div class="kicker">2.1 Why hollow pipes guide</div>
+  <h2>Fit half-sines between the walls</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>Metal wall demands E<sub>tan</sub> = 0 at <em>both</em> walls, spacing a → fit <em class="term">half sine waves</em>: transverse wavenumber k<sub>c</sub> = π/a.</li>
+        <li>The frequency must pay for transverse <em>and</em> forward wavenumber:</li>
+      </ul>
+      <div class="math">β² = k² − k<sub>c</sub>² &nbsp;⇒&nbsp; β = (2π/c)·√(f² − f<sub>c</sub>²), &nbsp; <em class="term">f<sub>c</sub> = c/2a</em></div>
+      <p class="small muted">k = 2πf/c total wavenumber; β = forward propagation constant (lecture 2's γ, lossless).</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 320 200" width="100%">
+        <rect x="30" y="20" width="12" height="160" fill="#1a1f2b"/>
+        <rect x="278" y="20" width="12" height="160" fill="#1a1f2b"/>
+        <path d="M42 100 C 100 -20, 220 -20, 278 100" fill="none" stroke="#0f62fe" stroke-width="3"/>
+        <path d="M42 100 C 100 220, 220 220, 278 100" fill="none" stroke="#0f62fe" stroke-width="3" stroke-dasharray="6 4"/>
+        <line x1="42" y1="100" x2="278" y2="100" stroke="#5b6472" stroke-width="1"/>
+        <text x="130" y="45" font-size="14" fill="#0f62fe">|E| ~ sin(πx/a)</text>
+        <text x="140" y="195" font-size="14">← a →</text>
+        <text x="10" y="105" font-size="13" fill="#5b6472">E=0</text>
+        <text x="294" y="105" font-size="13" fill="#5b6472">E=0</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box trap">
+    <p>f &lt; f<sub>c</sub>: β goes <em class="term">imaginary</em> — e<sup>−jβz</sup> → e<sup>−κz</sup>. The wave is
+    <em class="term">refused, not absorbed</em>: no loss anywhere, energy stored and returned. Hour 3 watches a lossless
+    simulation kill a wave in 1 cm.</p>
+  </div>
+</section>
+
+<!-- 15 · mode zoo -->
+<section class="slide">
+  <div class="kicker">2.1 First principles</div>
+  <h2>Separation of variables gives the whole zoo</h2>
+  <div class="math" style="font-size:4vh">f<sub>c</sub>(m,n) = (c/2)·√( (m/a)² + (n/b)² )</div>
+  <ul>
+    <li><em class="term">TE<sub>mn</sub></em> (transverse electric — E strictly ⊥ travel, some H along the guide);
+        <em class="term">TM<sub>mn</sub></em> (transverse magnetic — the reverse).</li>
+    <li>m, n = number of half-sine variations across a, b. The fast version was the m=1, n=0 row.</li>
+    <li>Solve: sin(mπx/a)·sin(nπy/b) patterns from E<sub>tan</sub> = 0 on all four walls — lecture 2's boundary conditions, now in 2-D.</li>
+  </ul>
+  <div class="box rule">
+    <p><em class="term">TE₁₀ is the dominant mode</em> — lowest f<sub>c</sub>. For a standard a ≈ 2b guide, the next
+    two (TE₂₀ at c/a, TE₀₁ at c/2b) arrive together at exactly <em class="term">2·f<sub>c</sub></em> → one octave of
+    single-mode operation.</p>
+  </div>
+</section>
+
+<!-- 16 · the catalog -->
+<section class="slide">
+  <div class="kicker">2.2 The catalog</div>
+  <h2>Three pipes a student can buy &nbsp;<span class="muted small">(WR = waveguide, rectangular; number = broad wall in 0.01")</span></h2>
+  <table style="font-size:2.7vh; border-collapse:collapse; margin-top:1vh">
+    <tr class="muted small"><td style="padding:.5vh 2vh">guide</td><td style="padding:.5vh 2vh">a (mm)</td><td style="padding:.5vh 2vh">f_c(TE₁₀) = c/2a</td><td style="padding:.5vh 2vh">next mode</td><td style="padding:.5vh 2vh">vendor band</td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.5vh 2vh"><em class="term">WR-90</em></td><td style="padding:.5vh 2vh">22.86</td><td style="padding:.5vh 2vh"><em class="term">6.5571 GHz</em></td><td style="padding:.5vh 2vh">13.114 GHz</td><td style="padding:.5vh 2vh">8.2–12.4 GHz</td></tr>
+    <tr><td style="padding:.5vh 2vh">WR-75</td><td style="padding:.5vh 2vh">19.05</td><td style="padding:.5vh 2vh">7.8686 GHz</td><td style="padding:.5vh 2vh">15.737 GHz</td><td style="padding:.5vh 2vh">10.0–15.0 GHz</td></tr>
+    <tr><td style="padding:.5vh 2vh">WR-62</td><td style="padding:.5vh 2vh">15.80</td><td style="padding:.5vh 2vh">9.4878 GHz</td><td style="padding:.5vh 2vh">18.976 GHz</td><td style="padding:.5vh 2vh">12.4–18.0 GHz</td></tr>
+  </table>
+  <div class="box rule">
+    <p>Vendor bands are <em class="term">1.25·f<sub>c</sub> to ~1.9·f<sub>c</sub></em>, not f<sub>c</sub> to 2f<sub>c</sub>.
+    The 25% bottom guard is the next slide's whole story; the top guard keeps mode 2's evanescent tail asleep at flanges.</p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">The homework's picker: our front-end is 10 GHz — all three are "single-mode at 10 GHz" by the arithmetic. One is still a trap.</p>
+</section>
+
+<!-- 17 · omega-beta -->
+<section class="slide">
+  <div class="kicker">2.3 Dispersion</div>
+  <h2>The ω-β diagram — the slope is the speed of energy</h2>
+  <div class="cols">
+    <div style="flex:1.6">
+      <svg viewBox="0 0 470 300" width="100%">
+        <!-- axes -->
+        <line x1="40" y1="280" x2="450" y2="280" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="280" x2="40" y2="10" stroke="#1a1f2b" stroke-width="2"/>
+        <text x="350" y="297" font-size="13">β (rad/m)</text>
+        <text x="52" y="18" font-size="13">f (GHz)</text>
+        <g font-size="12" fill="#5b6472">
+          <text x="20" y="285">0</text>
+          <text x="18" y="219">5</text>
+          <text x="12" y="154">10</text>
+          <text x="12" y="24">20</text>
+        </g>
+        <!-- light line -->
+        <polyline points="40,280 138,212 236,144 333,75 413,20" fill="none" stroke="#5b6472" stroke-width="2" stroke-dasharray="7 5"/>
+        <text x="330" y="105" font-size="13" fill="#5b6472" transform="rotate(-34 330 105)">light line ω = cβ</text>
+        <!-- guides -->
+        <polyline points="40,195 76,191 111,181 147,167 182,149 218,129 253,108 289,87 324,64 360,41 396,18" fill="none" stroke="#0f62fe" stroke-width="2.5"/>
+        <polyline points="40,178 76,175 111,166 147,153 182,137 218,119 253,99 289,78 324,57 360,34 396,12" fill="none" stroke="#2e8540" stroke-width="2.5"/>
+        <polyline points="40,157 76,154 111,147 147,136 182,122 218,105 253,87 289,67 324,46 360,25 396,3" fill="none" stroke="#b3261e" stroke-width="2.5"/>
+        <!-- legend, lower right (below the light line) -->
+        <g font-size="13">
+          <line x1="290" y1="211" x2="316" y2="211" stroke="#0f62fe" stroke-width="2.5"/><text x="322" y="215" fill="#0f62fe">WR-90 (f_c 6.56 GHz)</text>
+          <line x1="290" y1="233" x2="316" y2="233" stroke="#2e8540" stroke-width="2.5"/><text x="322" y="237" fill="#2e8540">WR-75 (f_c 7.87 GHz)</text>
+          <line x1="290" y1="255" x2="316" y2="255" stroke="#b3261e" stroke-width="2.5"/><text x="322" y="259" fill="#b3261e">WR-62 (f_c 9.49 GHz)</text>
+        </g>
+        <!-- 10 GHz line + markers -->
+        <line x1="40" y1="150" x2="450" y2="150" stroke="#5b6472" stroke-width="1" stroke-dasharray="3 4"/>
+        <circle cx="181" cy="150" r="5" fill="#0f62fe"/>
+        <circle cx="155" cy="150" r="5" fill="#2e8540"/>
+        <circle cx="99" cy="150" r="5" fill="#b3261e"/>
+        <text x="58" y="95" font-size="13" fill="#b3261e">WR-62 at 10 GHz: nearly flat</text>
+        <line x1="95" y1="102" x2="99" y2="142" stroke="#b3261e" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <div>
+      <ul class="small">
+        <li>Slope <em>from origin</em> = v<sub>p</sub> = ω/β &gt; c — no alarm, phase carries no information.</li>
+        <li><em class="term">Tangent slope</em> = v<sub>g</sub> = c·√(1−(f<sub>c</sub>/f)²) &lt; c — the energy speed.</li>
+        <li>v<sub>p</sub>·v<sub>g</sub> = c². Near cutoff: energy crawls, phase sprints.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · group delay priced -->
+<section class="slide">
+  <div class="kicker">2.3 The price of the knee</div>
+  <h2>30 cm at 10 GHz — delay, and worse than delay</h2>
+  <table style="font-size:2.7vh; border-collapse:collapse; margin-top:1vh">
+    <tr class="muted small"><td style="padding:.5vh 2vh">guide</td><td style="padding:.5vh 2vh">f/f_c</td><td style="padding:.5vh 2vh">group delay (30 cm)</td><td style="padding:.5vh 2vh">spread over 200 MHz window</td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.5vh 2vh">WR-90</td><td style="padding:.5vh 2vh">1.53</td><td style="padding:.5vh 2vh"><em class="term">1.3254 ns</em></td><td style="padding:.5vh 2vh"><em class="term">20 ps</em></td></tr>
+    <tr><td style="padding:.5vh 2vh">WR-75</td><td style="padding:.5vh 2vh">1.27</td><td style="padding:.5vh 2vh">1.6215 ns</td><td style="padding:.5vh 2vh">52 ps</td></tr>
+    <tr style="background:#fdecea"><td style="padding:.5vh 2vh">WR-62</td><td style="padding:.5vh 2vh">1.05</td><td style="padding:.5vh 2vh"><em class="term">3.1674 ns</em></td><td style="padding:.5vh 2vh"><span class="warn"><em class="term">583 ps</em></span></td></tr>
+  </table>
+  <p class="small muted" style="margin-top:1vh">(light in air crosses 30 cm in 1.0007 ns)</p>
+  <div class="box rule">
+    <p><em class="term">"Propagates" and "usable" are different words.</em> WR-62 carries 10 GHz — 2.4× slower and
+    29× more dispersive. Half a nanosecond of smear across one pulse is distortion now, <em>range error</em> by
+    lecture 15. The vendor's 1.25·f<sub>c</sub> guard band = "stay off the knee."</p>
+  </div>
+</section>
+
+<!-- 19 · loss mechanisms -->
+<section class="slide">
+  <div class="kicker">2.4 Loss</div>
+  <h2>Three ways to lose power — three fingerprints</h2>
+  <ul>
+    <li><em class="term">Conductor:</em> current crowds into skin depth δ = 1/√(πfμσ); R<sub>s</sub> = √(πfμρ) grows as
+      <em class="term">√f</em>. Microstrip estimate: α<sub>c</sub> ≈ R<sub>s</sub>/(Z₀w) — a 1 mm strip pays dearly;
+      centimeters of waveguide wall pay little.</li>
+    <li><em class="term">Dielectric:</em> tan δ of stored energy per radian → α<sub>d</sub> grows as <em class="term">f</em>
+      (more radians per meter). The waveguide's dielectric is <em class="term">air</em> — line item deleted.</li>
+    <li><em class="term">Radiation / surface waves:</em> the open structure's tax at discontinuities; the closed pipe's is
+      zero by topology.</li>
+  </ul>
+  <div class="box rule"><p class="small">Np vs dB, once and forever: fields decay e<sup>−αℓ</sup>, power e<sup>−2αℓ</sup> →
+    dB = 8.686·αℓ (= 20·log₁₀e, not 10·log₁₀e). The homework's module 3 walks this gate consciously.</p></div>
+</section>
+
+<!-- 20 · shootout -->
+<section class="slide">
+  <div class="kicker">2.4 The shootout</div>
+  <h2>Measured: 30 cm at 10 GHz</h2>
+  <table style="font-size:2.7vh; border-collapse:collapse; margin-top:1vh">
+    <tr class="muted small"><td style="padding:.5vh 2vh">medium</td><td style="padding:.5vh 2vh">conductor</td><td style="padding:.5vh 2vh">dielectric</td><td style="padding:.5vh 2vh">total</td></tr>
+    <tr><td style="padding:.5vh 2vh">microstrip, RO4350B</td><td style="padding:.5vh 2vh">1.206 dB</td><td style="padding:.5vh 2vh">1.488 dB</td><td style="padding:.5vh 2vh"><em class="term">2.694 dB</em></td></tr>
+    <tr style="background:#fdecea"><td style="padding:.5vh 2vh">microstrip, FR-4</td><td style="padding:.5vh 2vh">1.44 dB</td><td style="padding:.5vh 2vh"><span class="warn">9.03 dB</span></td><td style="padding:.5vh 2vh"><span class="warn"><em class="term">10.47 dB</em></span></td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.5vh 2vh">WR-90 waveguide</td><td style="padding:.5vh 2vh">0.0321 dB</td><td style="padding:.5vh 2vh">—</td><td style="padding:.5vh 2vh"><em class="term">0.0321 dB</em></td></tr>
+  </table>
+  <div class="box rule">
+    <p>Waveguide beats the good board <em class="term">84×</em>; the cheap board loses <em class="term">91% of the
+    power</em> (10.47 dB) in 30 cm. Add power handling — air breakdown in WR-90 is tens of kW vs a microstrip edge
+    arcing at tens of W — and you know why radar transmitters bolt brass pipes to their dishes.</p>
+  </div>
+</section>
+
+<!-- 21 · war story -->
+<section class="slide">
+  <div class="kicker">2.4 War story</div>
+  <h2>The patch array that fed the substrate</h2>
+  <div class="box">
+    <p class="small">A 10 GHz patch-array prototype: elegant corporate feed, gain <em class="term">4 dB below
+    prediction</em>. Weeks spent blaming the patches. The culprit: ~40 cm of cumulative FR-4 feed line quietly eating
+    <em class="term">~40% of the transmit power</em> before any of it reached an antenna. At their last project's
+    2.4 GHz the same feed had been fine — α<sub>d</sub> scales with f, and intuition built at WiFi frequencies does not
+    transfer to X-band. The fix was a Rogers respin and a lesson invoiced at one board spin.</p>
+  </div>
+  <div class="box rule">
+    <p>The frequency ladder: <em class="term">2.4 GHz</em> — FR-4 is fine, nobody buys waveguide ·
+    <em class="term">10 GHz</em> — Rogers for the front-end, pipe for the long runs and the kilowatts ·
+    <em class="term">77 GHz</em> — lines are millimeters, the antenna moves onto the package (lecture 13).</p>
+  </div>
+</section>
+
+<!-- 22 · choosing -->
+<section class="slide">
+  <div class="kicker">2.4 Choosing</div>
+  <h2>The decision table you will actually use</h2>
+  <table style="font-size:2.4vh; border-collapse:collapse; margin-top:1vh">
+    <tr class="muted small"><td style="padding:.5vh 1.6vh"></td><td style="padding:.5vh 1.6vh">loss</td><td style="padding:.5vh 1.6vh">power</td><td style="padding:.5vh 1.6vh">integration</td><td style="padding:.5vh 1.6vh">bandwidth</td><td style="padding:.5vh 1.6vh">cost/size</td></tr>
+    <tr><td style="padding:.5vh 1.6vh"><em class="term">microstrip</em></td><td style="padding:.5vh 1.6vh">worst</td><td style="padding:.5vh 1.6vh">tens of W</td><td style="padding:.5vh 1.6vh"><em class="term">solder anything</em></td><td style="padding:.5vh 1.6vh">DC → dispersion limit</td><td style="padding:.5vh 1.6vh">free board area</td></tr>
+    <tr><td style="padding:.5vh 1.6vh">CPW</td><td style="padding:.5vh 1.6vh">worse (edges)</td><td style="padding:.5vh 1.6vh">tens of W</td><td style="padding:.5vh 1.6vh">best for MMICs</td><td style="padding:.5vh 1.6vh">DC → very high</td><td style="padding:.5vh 1.6vh">board area</td></tr>
+    <tr><td style="padding:.5vh 1.6vh">stripline</td><td style="padding:.5vh 1.6vh">mid</td><td style="padding:.5vh 1.6vh">tens of W</td><td style="padding:.5vh 1.6vh">routing only</td><td style="padding:.5vh 1.6vh">DC up, shielded</td><td style="padding:.5vh 1.6vh">inner layers</td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.5vh 1.6vh"><em class="term">waveguide</em></td><td style="padding:.5vh 1.6vh"><em class="term">best, 84×</em></td><td style="padding:.5vh 1.6vh"><em class="term">tens of kW</em></td><td style="padding:.5vh 1.6vh">none — it's plumbing</td><td style="padding:.5vh 1.6vh">one octave, f<sub>c</sub>-gated</td><td style="padding:.5vh 1.6vh">machined metal</td></tr>
+  </table>
+  <div class="box rule"><p class="small">The homework's split verdict is the industry's: <em class="term">board for the
+    front-end, pipe for the run to the antenna.</em> Full-wave EM (openEMS, instructor-run) referees the boundary cases —
+    hour 3 post-processes its Touchstone export like any measurement.</p></div>
+</section>
+
+<!-- 23 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in four sentences</h2>
+  <ul class="big">
+    <li>Pipes guide by fitting half-sines: <em class="term">f<sub>c</sub> = c/2a</em> — 6.557 GHz for WR-90, exact.</li>
+    <li>Below cutoff the wave is <em class="term">refused, not absorbed</em>; above, one octave of single-mode.</li>
+    <li>WR-62 "works" at 10 GHz — and smears a 200 MHz window <em class="term">29×</em> worse than WR-90. Stay off the knee.</li>
+    <li>The loss table: waveguide by <em class="term">84×</em>; FR-4 loses 91% in 30 cm. The substrate is a component.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 prints every number on this screen — then refuses a wave on camera.</p>
+</section>
+
+<!-- 24 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in scikit-rf and fdtd — every claim becomes a printed number</h2>
+  <ul>
+    <li>Hammerstad by hand — 1.1131 mm, ε<sub>eff</sub> 2.7361, synthesis as a root-find</li>
+    <li>The referee: skrf <span class="mono">MLine</span> with full dispersion — hand formula survives at <em class="term">1.73% / 2.63%</em></li>
+    <li><span class="mono">RectangularWaveguide</span> — cutoffs to every digit, the ω-β diagram, 3.1674 ns for WR-62</li>
+    <li>FDTD (finite-difference time-domain, the <span class="mono">fdtd</span> package): a wave <em class="term">refused</em> below cutoff — decay measured at 100.3 vs 100.0 Np/m analytic</li>
+    <li>The openEMS case study — post-processing a full-wave Touchstone export (placeholder until the instructor file lands)</li>
+    <li>The deliberate bug — λ/4 cut with ε<sub>r</sub>: 4.018 mm vs 4.6305 mm, resonant at 11.5 GHz not 10</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> — Q1 (the transformer
+  changes boards) and Q2 (the pipe that technically works) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 5 · Planar Lines &amp; Waveguides · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

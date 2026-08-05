@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 8 · Principles — Filters I: The Insertion-Loss Method</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 8 · Hours 1–2</div>
+  <h1>Filters I<br>The Insertion-Loss Method</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: scipy prototypes + the ABCD sweep, live → homework: clean the band</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer, <em>Microwave and RF Design</em> Vol. 4, ch. 2 (free) · Pozar ch. 8 · Cohn 1957</p>
+</section>
+
+<!-- 2 · the story -->
+<section class="slide">
+  <div class="kicker">1.1 The receiver's front door</div>
+  <h2>The course radar's IF strip has neighbors</h2>
+  <svg viewBox="0 0 760 200" width="100%">
+    <line x1="40" y1="140" x2="720" y2="140" stroke="#1a1f2b" stroke-width="3"/>
+    <g font-size="15" fill="#1a1f2b" text-anchor="middle">
+      <line x1="100" y1="132" x2="100" y2="148" stroke="#1a1f2b" stroke-width="2"/><text x="100" y="170">35 MHz</text>
+      <line x1="380" y1="132" x2="380" y2="148" stroke="#1a1f2b" stroke-width="2"/><text x="380" y="170">60 MHz</text>
+      <line x1="660" y1="132" x2="660" y2="148" stroke="#1a1f2b" stroke-width="2"/><text x="660" y="170">85 MHz</text>
+    </g>
+    <rect x="324" y="55" width="112" height="80" rx="8" fill="#dbe8ff"/>
+    <text x="380" y="80" font-size="15" text-anchor="middle" font-weight="700" fill="#0f62fe">the echo's band</text>
+    <text x="380" y="100" font-size="13" text-anchor="middle" fill="#5b6472">55–65 MHz</text>
+    <rect x="72" y="70" width="56" height="65" rx="8" fill="#fdecea"/>
+    <text x="100" y="95" font-size="14" text-anchor="middle" fill="#b3261e">image</text>
+    <text x="100" y="113" font-size="14" text-anchor="middle" fill="#b3261e">band</text>
+    <rect x="632" y="55" width="56" height="80" rx="8" fill="#fdecea"/>
+    <text x="660" y="85" font-size="14" text-anchor="middle" fill="#b3261e">VHF</text>
+    <text x="660" y="103" font-size="14" text-anchor="middle" fill="#b3261e">comms</text>
+    <text x="380" y="30" font-size="15" text-anchor="middle" fill="#5b6472">both aggressors are STRONGER than a drone echo from 4 km</text>
+  </svg>
+  <div class="box rule"><p>Lecture 1's radar mixes 10 GHz echoes to a 60 MHz <em class="term">IF (intermediate frequency)</em>.
+    Before the 1 MHz detection bandwidth means anything, a <em class="term">bandpass filter</em> must kill both
+    neighbors — without touching the band. That filter is this lecture (and the homework).</p></div>
+  <p class="small muted" style="margin-top:1.2vh">VHF = very high frequency (30–300 MHz). Why the IF is 60 MHz: lecture 12's frequency planning.</p>
+</section>
+
+<!-- 3 · spec language -->
+<section class="slide">
+  <div class="kicker">1.1 Spec language</div>
+  <h2>Three numbers rule every filter conversation</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><em class="term">Passband ripple</em> — worst attenuation in the band you pass.<br>
+          <span class="accent">≤ 0.5 dB, 55–65 MHz</span></li>
+        <li><em class="term">Stopband rejection</em> — least attenuation where you must kill.<br>
+          <span class="accent">≥ 40 dB at 35 &amp; 85 MHz</span></li>
+        <li><em class="term">Group delay</em> τ<sub>g</sub> = −dφ/dω — the phase spec amplitude plots hide (hour 2).</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="0 0 400 250" width="100%">
+        <line x1="40" y1="220" x2="390" y2="220" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="20" x2="40" y2="220" stroke="#1a1f2b" stroke-width="2"/>
+        <text x="30" y="45" font-size="12" text-anchor="end">0</text>
+        <text x="30" y="200" font-size="12" text-anchor="end">−60</text>
+        <text x="20" y="130" font-size="12" text-anchor="middle" transform="rotate(-90 20 130)">|S21| dB</text>
+        <path d="M50 210 C 120 205 150 160 175 60 L 180 47 C 190 40 200 44 210 40
+                 C 220 44 230 40 240 47 L 245 60 C 262 140 290 200 380 212"
+              fill="none" stroke="#0f62fe" stroke-width="2.5"/>
+        <line x1="178" y1="48" x2="243" y2="48" stroke="#1a1f2b" stroke-width="4"/>
+        <text x="210" y="30" font-size="12" text-anchor="middle">−0.5 dB ceiling</text>
+        <line x1="80" y1="155" x2="120" y2="155" stroke="#b3261e" stroke-width="4"/>
+        <line x1="300" y1="155" x2="340" y2="155" stroke="#b3261e" stroke-width="4"/>
+        <text x="100" y="145" font-size="12" text-anchor="middle" fill="#b3261e">≥40 dB</text>
+        <text x="320" y="145" font-size="12" text-anchor="middle" fill="#b3261e">≥40 dB</text>
+        <text x="210" y="240" font-size="12" text-anchor="middle" fill="#5b6472">55–65 MHz passband · masks at 35 / 85 MHz</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box"><p class="small">The spec is a <em class="term">mask</em>: the curve must stay above the black bar and
+    below the red ones. The homework's <span class="mono">--check</span> prints this table with measured margins —
+    the curve is never the deliverable, the numbers are.</p></div>
+</section>
+
+<!-- 4 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why this lecture exists</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">Every ladder filter is one filter.</em><br>
+      <span class="muted">Design the lowpass prototype once; scaling + transformation reach every f₀, bandwidth, impedance.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">Ripple is a currency.</em><br>
+      <span class="muted">Letting the passband wobble buys stopband. Measured today: 11.7 dB at equal order — or one whole section.</span></li>
+    <li><em class="term">The bandpass center is the geometric mean √(f₁f₂).</em><br>
+      <span class="muted">Not (f₁+f₂)/2. Hour 3 builds the wrong one and watches it fail politely.</span></li>
+  </ol>
+</section>
+
+<!-- 5 · insertion-loss method -->
+<section class="slide">
+  <div class="kicker">1.2 The insertion-loss method</div>
+  <h2>Specify the mathematics, then synthesize the circuit</h2>
+  <div class="math">P<sub>LR</sub> = <span class="muted">(available power)</span>/<span class="muted">(delivered power)</span> = 1/|S21|² &nbsp;·&nbsp; IL = 10·log₁₀ P<sub>LR</sub></div>
+  <p class="small muted" style="text-align:center">P<sub>LR</sub> = power loss ratio · IL = insertion loss · S21 = transmission (scattering parameters, L4)</p>
+  <div class="box rule">
+    <p>Physical two-port ⇒ P<sub>LR</sub> = 1 + M(ω²)/N(ω²), a ratio of polynomials.
+    <em class="term">Choose the polynomial → get the response. Extract the ladder → get the filter.</em></p>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:2.2vh">
+    <div class="box" style="text-align:center"><p><em class="term">1 · prototype</em></p><p class="small muted">Ω<sub>c</sub> = 1, 1 Ω ends, values g₁…g<sub>N+1</sub></p></div>
+    <div class="box" style="text-align:center"><p><em class="term">2 · scale</em></p><p class="small muted">to 50 Ω</p></div>
+    <div class="box" style="text-align:center"><p><em class="term">3 · transform</em></p><p class="small muted">LP → HP / BP / BS at real f</p></div>
+    <div class="box" style="text-align:center"><p><em class="term">4 · sweep</em></p><p class="small muted">measure the spec table</p></div>
+  </div>
+  <p class="small muted" style="margin-top:1.6vh">LP/HP/BP/BS = lowpass / highpass / bandpass / bandstop. Stage 4 is the one everyone skips — and hour 3's bug survives exactly until stage 4.</p>
+</section>
+
+<!-- 6 · the prototype ladder -->
+<section class="slide">
+  <div class="kicker">1.2 The lowpass prototype</div>
+  <h2>One ladder, N numbers, plus a load</h2>
+  <svg viewBox="0 0 760 220" width="100%">
+    <!-- source -->
+    <line x1="30" y1="80" x2="70" y2="80" stroke="#1a1f2b" stroke-width="2.5"/>
+    <rect x="34" y="92" width="18" height="44" fill="none" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="43" y1="80" x2="43" y2="92" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="43" y1="136" x2="43" y2="180" stroke="#1a1f2b" stroke-width="2.5"/>
+    <text x="10" y="205" font-size="15" text-anchor="start">g₀ = 1 (source)</text>
+    <!-- series L: g1 -->
+    <path d="M90 80 q 12 -26 24 0 q 12 -26 24 0 q 12 -26 24 0" fill="none" stroke="#0f62fe" stroke-width="3"/>
+    <line x1="70" y1="80" x2="90" y2="80" stroke="#1a1f2b" stroke-width="2.5"/>
+    <text x="131" y="42" font-size="16" text-anchor="middle" fill="#0f62fe">g₁ (series L)</text>
+    <line x1="162" y1="80" x2="270" y2="80" stroke="#1a1f2b" stroke-width="2.5"/>
+    <!-- shunt C: g2 -->
+    <line x1="240" y1="80" x2="240" y2="112" stroke="#0f62fe" stroke-width="3"/>
+    <line x1="222" y1="112" x2="258" y2="112" stroke="#0f62fe" stroke-width="3.5"/>
+    <line x1="222" y1="124" x2="258" y2="124" stroke="#0f62fe" stroke-width="3.5"/>
+    <line x1="240" y1="124" x2="240" y2="180" stroke="#1a1f2b" stroke-width="2.5"/>
+    <text x="240" y="152" font-size="16" text-anchor="start" fill="#0f62fe" dx="26" dy="-14">g₂ (shunt C)</text>
+    <!-- series L: g3 -->
+    <path d="M290 80 q 12 -26 24 0 q 12 -26 24 0 q 12 -26 24 0" fill="none" stroke="#0f62fe" stroke-width="3"/>
+    <line x1="270" y1="80" x2="290" y2="80" stroke="#1a1f2b" stroke-width="2.5"/>
+    <text x="331" y="42" font-size="16" text-anchor="middle" fill="#0f62fe">g₃</text>
+    <line x1="362" y1="80" x2="470" y2="80" stroke="#1a1f2b" stroke-width="2.5"/>
+    <!-- dots -->
+    <text x="490" y="86" font-size="22" fill="#5b6472">⋯</text>
+    <line x1="510" y1="80" x2="600" y2="80" stroke="#1a1f2b" stroke-width="2.5"/>
+    <!-- load -->
+    <rect x="591" y="92" width="18" height="44" fill="none" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="600" y1="80" x2="600" y2="92" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="600" y1="136" x2="600" y2="180" stroke="#1a1f2b" stroke-width="2.5"/>
+    <text x="600" y="205" font-size="15" text-anchor="middle">g_N+1 (load)</text>
+    <!-- ground rail -->
+    <line x1="43" y1="180" x2="600" y2="180" stroke="#1a1f2b" stroke-width="2.5"/>
+  </svg>
+  <div class="box rule"><p>Cutoff Ω = 1 rad/s, source ≈ 1 Ω. Series inductors g₁, g₃, … alternate with shunt
+    capacitors g₂, g₄, … (or the exact dual — same numbers, swapped roles). All shape decisions live in the
+    g-numbers; hours of design collapse into <em class="term">choosing a polynomial</em>.</p></div>
+</section>
+
+<!-- 7 · butterworth fast -->
+<section class="slide">
+  <div class="kicker">1.3 Butterworth, derivation 1</div>
+  <h2>Maximally flat — hoard the error at the edge</h2>
+  <div class="math" style="font-size:4vh">P<sub>LR</sub> = 1 + Ω<sup>2N</sup></div>
+  <ul>
+    <li>At Ω = 0: perfect. First 2N−1 derivatives of P<sub>LR</sub> vanish — <em class="term">maximally flat</em>.</li>
+    <li>At Ω = 1: always <em class="term">3.01 dB</em> — the Butterworth band edge <em>is</em> its 3-dB point, by definition. (Remember this; it ambushes a design in hour 2.)</li>
+    <li>Beyond: 20N dB/decade. N = order = element count.</li>
+  </ul>
+  <div class="box trap"><p>The flatness is bought by <em class="term">spending nothing anywhere else</em>: all the
+    approximation error piles up at the band edge — precisely where your spec was loosest. Chebyshev will
+    call this a waste.</p></div>
+</section>
+
+<!-- 8 · butterworth poles -->
+<section class="slide">
+  <div class="kicker">1.3 Butterworth, derivation 2</div>
+  <h2>The poles sit on a circle — and scipy knows it</h2>
+  <div class="cols">
+    <div>
+      <p>On the axis, P<sub>LR</sub> = 1 + (−s²)<sup>N</sup>: poles of |S21|² solve (−s²)<sup>N</sup> = −1 —
+      <em class="term">2N points, equally spaced, unit circle</em>. Keep the left-half N (stability decides).</p>
+      <div class="math">g<sub>k</sub> = 2·sin[(2k−1)π/2N] &nbsp;·&nbsp; g<sub>N+1</sub> = 1</div>
+      <div class="box rule"><p class="small">Sanity anchor N = 1: shunt C across 1 Ω ends → |S21|² = 1/(1+(ωC/2)²);
+        3 dB at ω = 1 → C = 2 = 2·sin(π/2). Formula meets circuit on the case you can do by hand.<br>
+        N = 3: <span class="mono">[1, 2, 1, 1]</span> — memorize it, it is the canary.
+        N = 4: <span class="mono">0.7654, 1.8478, 1.8478, 0.7654</span>.</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 300" width="82%">
+        <circle cx="150" cy="150" r="100" fill="none" stroke="#5b6472" stroke-dasharray="5 5"/>
+        <line x1="150" y1="30" x2="150" y2="270" stroke="#1a1f2b" stroke-width="1.5"/>
+        <line x1="30" y1="150" x2="270" y2="150" stroke="#1a1f2b" stroke-width="1.5"/>
+        <!-- N=3: 6 roots at 30° spacing starting 0°? roots of s^6=-... at angles 0,60,...+30 -->
+        <g fill="#0f62fe">
+          <circle cx="50"  cy="150" r="7"/>
+          <circle cx="100" cy="63.4" r="7"/>
+          <circle cx="100" cy="236.6" r="7"/>
+        </g>
+        <g fill="none" stroke="#b3261e" stroke-width="2">
+          <circle cx="250" cy="150" r="7"/>
+          <circle cx="200" cy="63.4" r="7"/>
+          <circle cx="200" cy="236.6" r="7"/>
+        </g>
+        <text x="150" y="22" font-size="14" text-anchor="middle">jω</text>
+        <text x="278" y="155" font-size="14">σ</text>
+        <text x="72" y="120" font-size="13" fill="#0f62fe">kept (stable)</text>
+        <text x="196" y="200" font-size="13" fill="#b3261e">discarded</text>
+        <text x="150" y="292" font-size="13" text-anchor="middle" fill="#5b6472">N = 3: this is exactly what scipy.signal.buttap returns</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · chebyshev idea -->
+<section class="slide">
+  <div class="kicker">1.4 Chebyshev</div>
+  <h2>Equal ripple: spend the whole error budget, everywhere</h2>
+  <div class="cols">
+    <div>
+      <div class="math">P<sub>LR</sub> = 1 + ε²·C<sub>N</sub>²(Ω)</div>
+      <p class="small muted" style="text-align:center">ε² = 10<sup>ripple/10</sup> − 1 (0.5 dB → ε = 0.3493) · C<sub>N</sub> = Chebyshev polynomial: |C<sub>N</sub>| ≤ 1 in band, cosh(N·arccosh Ω) outside · C<sub>N+1</sub> = 2Ω·C<sub>N</sub> − C<sub>N−1</sub></p>
+      <ul class="small" style="font-size:2.4vh">
+        <li>In band: N wiggles between 0 and the ripple; band edge <em>at</em> the ripple (N odd).</li>
+        <li>Outside: C<sub>N</sub> ≈ ½(2Ω)<sup>N</sup> — the skirt runs ~6(N−1) dB below Butterworth's, same order.</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="0 0 380 250" width="100%">
+        <line x1="40" y1="210" x2="370" y2="210" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="20" x2="40" y2="210" stroke="#1a1f2b" stroke-width="2"/>
+        <text x="30" y="40" font-size="12" text-anchor="end">0 dB</text>
+        <line x1="40" y1="52" x2="170" y2="52" stroke="#5b6472" stroke-dasharray="4 4"/>
+        <text x="30" y="57" font-size="12" text-anchor="end">−0.5</text>
+        <!-- butterworth: flat then rolls -->
+        <path d="M40 34 C 100 34 140 38 170 52 C 210 75 250 130 320 185"
+              fill="none" stroke="#5b6472" stroke-width="2.5"/>
+        <!-- chebyshev: ripples then steeper -->
+        <path d="M40 52 C 55 34 68 34 82 52 C 96 70 96 34 118 34 C 138 34 138 70 158 62
+                 L 170 52 C 200 95 230 170 280 200"
+              fill="none" stroke="#0f62fe" stroke-width="2.5"/>
+        <line x1="170" y1="20" x2="170" y2="210" stroke="#1a1f2b" stroke-dasharray="3 5"/>
+        <text x="170" y="228" font-size="12" text-anchor="middle">Ω = 1</text>
+        <text x="290" y="120" font-size="13" fill="#0f62fe">equal-ripple</text>
+        <text x="278" y="168" font-size="13" fill="#5b6472">maximally flat</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box trap"><p><em class="term">"More allowed ripple = worse filter"? No — it is a trade.</em>
+    Ripple is in-band error <em>and</em> rejection per section. Measured in hour 3: same order, same 0.5-dB edge,
+    the equal-ripple skirt is <span class="accent">40.52 dB</span> down where maximally-flat manages
+    <span class="warn">28.84 dB</span>. Ripple bought <em class="term">11.7 dB</em>. Minimax approximation, LC costume.</p></div>
+</section>
+
+<!-- 10 · the recursion -->
+<section class="slide">
+  <div class="kicker">1.4 The g-value recursion</div>
+  <h2>The homework's core — any N, not a table</h2>
+  <div class="box rule">
+    <p class="math" style="margin:.6vh 0; text-align:left; font-size:3vh">
+      β = ln[coth(ripple<sub>dB</sub>/17.37)] &nbsp;·&nbsp; γ = sinh(β/2N)<br>
+      a<sub>k</sub> = sin[(2k−1)π/2N] &nbsp;·&nbsp; b<sub>k</sub> = γ² + sin²(kπ/N)<br>
+      g₁ = 2a₁/γ &nbsp;·&nbsp; g<sub>k</sub> = 4a<sub>k−1</sub>a<sub>k</sub> / (b<sub>k−1</sub>·g<sub>k−1</sub>)<br>
+      g<sub>N+1</sub> = 1 (N odd) &nbsp;·&nbsp; coth²(β/4) (N even)
+    </p>
+  </div>
+  <ul style="margin-top:2vh">
+    <li>17.37 = 40/ln 10 — dB of ripple → nepers for the hyperbolics. Nothing mystical.</li>
+    <li>Classic row you will reproduce tonight: 0.5 dB, N = 3 → <em class="term">1.5963, 1.0967, 1.5963, 1.0</em>.</li>
+    <li>Why a recursion and not the book's table: the checker asks for orders no table prints — and lecture 9 imports this same engine.</li>
+  </ul>
+</section>
+
+<!-- 11 · earned twice -->
+<section class="slide">
+  <div class="kicker">1.4 Where the recursion comes from</div>
+  <h2>Earned twice: by hand at N = 1, by machine for all N</h2>
+  <div class="cols">
+    <div>
+      <div class="box rule"><p><em class="term">Fast (N = 1, by hand):</em> one shunt C between 1 Ω ends;
+        demand exactly the ripple at ω = 1 → C = 2ε. The recursion says g₁ = 2/sinh(β/2) — a two-line
+        hyperbolic identity shows 2/sinh(β/2) = 2ε <em>identically</em>. β and γ are ε in disguise.
+        Hour 3 prints both: <span class="mono">0.698623 = 0.698623</span>.</p></div>
+    </div>
+    <div>
+      <div class="box"><p><em class="term">First-principles (any N):</em> from |S11|² = 1 − 1/P<sub>LR</sub>,
+        spectral-factorize, form Z<sub>in</sub> = (1+S11)/(1−S11), and peel the ladder off by
+        <em class="term">continued-fraction division</em> — series L, shunt C, series L, … Each quotient is a g.
+        The homework's referee runs exactly this extraction on scipy's poles and must agree with your
+        recursion to 1e-8. (It agrees to 1e-12.)</p></div>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:2vh">S11 = reflection (L4). The symbolic grind to the closed recursion is Takahasi's; we let the machine hold the pencil — and use the agreement as the referee principle: two unrelated paths, one answer.</p>
+</section>
+
+<!-- 12 · even-N wrinkle -->
+<section class="slide">
+  <div class="kicker">1.4 The even-N wrinkle</div>
+  <h2>Why g<sub>N+1</sub> = 1.9841 is not a typo</h2>
+  <ul>
+    <li>Even N: C<sub>N</sub>(0) = ±1 → the response must sit <em class="term">0.5 dB down at DC</em> (DC = direct current, ω = 0).</li>
+    <li>But a lowpass LC ladder is transparent at DC — series Ls short, shunt Cs open. DC loss can <em>only</em> come from a resistive mismatch.</li>
+    <li>Hence unequal terminations: g<sub>N+1</sub> = coth²(β/4) = <em class="term">1.9841</em> for 0.5 dB.
+      Check: mismatch loss of 1.9841 vs 1 = −10·log₁₀(1−Γ²) = <em class="term">0.4999 dB</em> — exactly the ripple.</li>
+  </ul>
+  <div class="box rule"><p>Nothing in a filter table is arbitrary. Practical corollary: 50 Ω-in/50 Ω-out
+    catalogs are full of <em class="term">odd-order</em> filters. Homework Q3 makes you own this argument.</p></div>
+</section>
+
+<!-- 13 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>The insertion-loss method: <em class="term">choose P<sub>LR</sub>(Ω) as mathematics, then synthesize the unique ladder</em> that delivers it between real terminations.</li>
+    <li>Butterworth hoards flatness at DC and pays at the skirt; Chebyshev spends the ripple budget everywhere and collects <em class="term">11.7 dB</em>.</li>
+    <li>The recursion (β, γ, a<sub>k</sub>, b<sub>k</sub>) is scipy-checkable — <em class="term">two unrelated paths, one answer</em> is how you will know yours is right.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2 turns g-numbers into henries at 60 MHz — and finds the trap in the bandpass transformation.</p>
+</section>
+
+<!-- 14 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Scaling, Transformation,<br>Order, and Delay</h1>
+  <p class="muted" style="margin-top:3vh">1 Ω → 50 Ω · prototype → 60 MHz bandpass (the geometric-mean trap) · the nomogram retired · what steepness costs in phase</p>
+</section>
+
+<!-- 15 · scaling -->
+<section class="slide">
+  <div class="kicker">2.1 Impedance &amp; frequency scaling</div>
+  <h2>Two substitutions, no new ideas</h2>
+  <div class="cols">
+    <div>
+      <div class="box rule"><p><em class="term">Impedance × R₀:</em> every impedance scales; no ratio changes,
+        S-parameters (re-referenced) untouched.<br>
+        L' = R₀L &nbsp;·&nbsp; C' = C/R₀ &nbsp;·&nbsp; R' = R₀R</p></div>
+      <div class="box rule"><p><em class="term">Frequency ÷ ω<sub>c</sub>:</em> Ω ← ω/ω<sub>c</sub>.<br>
+        Combined lowpass recipe:<br>
+        L' = gR₀/ω<sub>c</sub> &nbsp;·&nbsp; C' = g/(R₀ω<sub>c</sub>)</p></div>
+    </div>
+    <div>
+      <p>Calibrate hands — 0.5 dB Chebyshev N = 3 lowpass, 100 MHz, 50 Ω:</p>
+      <table style="font-size:2.7vh; border-collapse:collapse; margin-top:1vh">
+        <tr><td style="padding:.4vh 2vh">L₁ = 1.5963·50/2π·10⁸</td><td style="text-align:right;padding:.4vh 2vh"><em class="term">127 nH</em></td></tr>
+        <tr><td style="padding:.4vh 2vh">C₂ = 1.0967/(50·2π·10⁸)</td><td style="text-align:right;padding:.4vh 2vh"><em class="term">34.9 pF</em></td></tr>
+      </table>
+      <p class="small muted" style="margin-top:2vh">Buyable parts. A synthesis that ends in numbers you cannot
+        solder is not finished — the checker prints nH and pF for the same reason.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · the bandpass map -->
+<section class="slide">
+  <div class="kicker">2.2 Lowpass → bandpass</div>
+  <h2>The substitution — and why the center is geometric</h2>
+  <div class="math" style="font-size:3.8vh">Ω ← (1/Δ)·(ω/ω₀ − ω₀/ω) &nbsp;&nbsp; with &nbsp; ω₀ = √(ω₁ω₂), &nbsp; Δ = (ω₂−ω₁)/ω₀</div>
+  <p class="small muted" style="text-align:center">Ω = prototype frequency · ω = real frequency · Δ = fractional bandwidth · ω₁, ω₂ = passband edges</p>
+  <div class="cols" style="margin-top:1vh">
+    <div>
+      <ul class="small" style="font-size:2.4vh">
+        <li>ω₀ → Ω = 0 (center ← DC) · ω₁, ω₂ → Ω = ∓1 — <em>only if</em> ω₀ is the geometric mean.</li>
+        <li>Exact symmetry: Ω(ω₀²/ω) = −Ω(ω). Frequencies pair by <em class="term">ratio</em>, not difference — the response is symmetric on a log axis.</li>
+        <li>Ours: f₀ = √(55·65) = <em class="term">59.7913 MHz</em>, Δ = <em class="term">0.1672</em>. Not 60.</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="0 0 380 190" width="100%">
+        <line x1="30" y1="50" x2="350" y2="50" stroke="#1a1f2b" stroke-width="2"/>
+        <text x="360" y="55" font-size="13">Ω</text>
+        <g font-size="12" text-anchor="middle">
+          <line x1="110" y1="43" x2="110" y2="57" stroke="#1a1f2b" stroke-width="2"/><text x="110" y="35">−1</text>
+          <line x1="190" y1="43" x2="190" y2="57" stroke="#1a1f2b" stroke-width="2"/><text x="190" y="35">0</text>
+          <line x1="270" y1="43" x2="270" y2="57" stroke="#1a1f2b" stroke-width="2"/><text x="270" y="35">+1</text>
+        </g>
+        <line x1="30" y1="150" x2="350" y2="150" stroke="#1a1f2b" stroke-width="2"/>
+        <text x="360" y="155" font-size="13">f</text>
+        <g font-size="12" text-anchor="middle">
+          <line x1="110" y1="143" x2="110" y2="157" stroke="#1a1f2b" stroke-width="2"/><text x="110" y="177">55</text>
+          <line x1="182" y1="143" x2="182" y2="157" stroke="#0f62fe" stroke-width="2.5"/><text x="182" y="177" fill="#0f62fe">59.79</text>
+          <line x1="270" y1="143" x2="270" y2="157" stroke="#1a1f2b" stroke-width="2"/><text x="270" y="177">65</text>
+        </g>
+        <g stroke="#5b6472" stroke-width="1.5" fill="none">
+          <path d="M110 57 L110 143"/><path d="M190 57 L182 143"/><path d="M270 57 L270 143"/>
+        </g>
+        <text x="60" y="105" font-size="12" fill="#5b6472">DC → center</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box trap"><p class="small">The 0.35% gap between √(f₁f₂) and (f₁+f₂)/2 = 60 MHz is hour 3's
+    deliberate bug — and it is exactly one ripple-band's width of wrong.</p></div>
+</section>
+
+<!-- 17 · elements become resonators -->
+<section class="slide">
+  <div class="kicker">2.2 Elements become resonators</div>
+  <h2>Every g becomes an L-C pair tuned to f₀</h2>
+  <svg viewBox="0 0 760 190" width="100%">
+    <line x1="30" y1="70" x2="80" y2="70" stroke="#1a1f2b" stroke-width="2.5"/>
+    <!-- series LC -->
+    <path d="M80 70 q 10 -22 20 0 q 10 -22 20 0 q 10 -22 20 0" fill="none" stroke="#0f62fe" stroke-width="3"/>
+    <line x1="140" y1="70" x2="168" y2="70" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="168" y1="52" x2="168" y2="88" stroke="#0f62fe" stroke-width="3.5"/>
+    <line x1="180" y1="52" x2="180" y2="88" stroke="#0f62fe" stroke-width="3.5"/>
+    <line x1="180" y1="70" x2="300" y2="70" stroke="#1a1f2b" stroke-width="2.5"/>
+    <text x="130" y="30" font-size="15" text-anchor="middle" fill="#0f62fe">series g: L = gR₀/(Δω₀), C = Δ/(gR₀ω₀)</text>
+    <!-- shunt LC -->
+    <line x1="260" y1="70" x2="260" y2="100" stroke="#1a1f2b" stroke-width="2.5"/>
+    <path d="M250 100 q -22 10 0 20 q -22 10 0 20" fill="none" stroke="#0f62fe" stroke-width="3" transform="translate(10,0)"/>
+    <line x1="260" y1="140" x2="260" y2="165" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="292" y1="100" x2="292" y2="165" stroke="#1a1f2b" stroke-width="0"/>
+    <line x1="278" y1="108" x2="314" y2="108" stroke="#0f62fe" stroke-width="3.5" transform="translate(14,6)"/>
+    <line x1="278" y1="120" x2="314" y2="120" stroke="#0f62fe" stroke-width="3.5" transform="translate(14,6)"/>
+    <line x1="310" y1="70" x2="310" y2="114" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="310" y1="126" x2="310" y2="165" stroke="#1a1f2b" stroke-width="2.5"/>
+    <line x1="230" y1="165" x2="340" y2="165" stroke="#1a1f2b" stroke-width="2.5"/>
+    <text x="300" y="185" font-size="15" text-anchor="middle" fill="#0f62fe">shunt g: C = g/(ΔR₀ω₀), L = ΔR₀/(gω₀)</text>
+    <!-- table -->
+    <g font-size="15">
+      <text x="420" y="45" font-weight="700">The IF filter (0.5 dB Chebyshev, N = 3):</text>
+      <text x="420" y="75">series: <tspan fill="#0f62fe" font-weight="700">1270.3 nH / 5.578 pF</tspan></text>
+      <text x="420" y="100">shunt: <tspan fill="#0f62fe" font-weight="700">20.30 nH / 349.09 pF</tspan></text>
+      <text x="420" y="125">every branch resonant at <tspan font-weight="700">59.7913 MHz</tspan></text>
+      <text x="420" y="150" fill="#5b6472">← the checkable invariant (the checker</text>
+      <text x="420" y="170" fill="#5b6472">   measures each branch's 1/2π√LC)</text>
+    </g>
+  </svg>
+  <div class="box rule"><p class="small">Lecture 6's resonators, one per g, all tuned to the same f₀, coupled
+    through the ladder. Cohn 1957 rebuilt filters as "resonators + couplings" — that picture is lecture 9's
+    starting point.</p></div>
+</section>
+
+<!-- 18 · traps -->
+<section class="slide">
+  <div class="kicker">2.2 The traps, named</div>
+  <h2>What the transformation does not forgive</h2>
+  <div class="box trap">
+    <p><em class="term">1 · Element spread.</em> Series L over shunt L = 1270/20.3 ≈ <span class="warn">63×</span> —
+    and it grows as g₁g₂/Δ². Narrow the band 3× → spread ~9×. At Δ of a few percent the parts leave the
+    catalog: this, not taste, is why narrowband filters go to coupled resonators (L9).</p>
+  </div>
+  <div class="box trap">
+    <p><em class="term">2 · The center.</em> Any branch resonating off √(f₁f₂) slides the whole ripple band.
+    Hour 3 builds the 60.00 MHz version: rejections still pass, the 55 MHz edge reads
+    <span class="warn">0.97 dB</span> where 0.5 was promised.</p>
+  </div>
+  <div class="box">
+    <p class="small"><em class="term">Pre-empted objection:</em> "my edges 55/65 aren't geometrically placed around
+    anything nice — is the map still exact?" Yes: f₀ is <em>defined</em> from your edges; the edges always land on
+    Ω = ±1. What is NOT symmetric afterwards is everything else — like a spec written "±25 MHz". Next slide.</p>
+  </div>
+</section>
+
+<!-- 19 · order estimation -->
+<section class="slide">
+  <div class="kicker">2.3 Order estimation</div>
+  <h2>The nomogram, retired by two closed forms</h2>
+  <p>Map the stop frequencies first — the spec's arithmetic symmetry dies in the transform:</p>
+  <div class="math" style="font-size:3vh">Ω(35 MHz) = <em class="term">−6.714</em> &nbsp;·&nbsp; Ω(85 MHz) = <em class="term">+4.294</em> &nbsp;→&nbsp; the smaller |Ω| binds: <em class="term">85 MHz decides</em></div>
+  <div class="box rule">
+    <p class="math" style="margin:.4vh 0; font-size:3vh; text-align:left">
+    A = (10<sup>L_stop/10</sup> − 1)/(10<sup>L_edge/10</sup> − 1) = 81,945<br>
+    Chebyshev: N ≥ arccosh(√A)/arccosh(Ω<sub>s</sub>) = 2.972 → <em class="term">N = 3</em><br>
+    Butterworth: N ≥ log₁₀(A)/(2·log₁₀ Ω<sub>s</sub>) = 3.882 → <em class="term">N = 4</em></p>
+  </div>
+  <div class="box trap"><p class="small"><em class="term">The Butterworth fine print:</em> its "band edge" must be
+    the 0.5-dB point (our promise), not the traditional 3-dB point — build A with L_edge = 0.5 dB, or widen the
+    design band by ε<sup>−1/N</sup>. Use the 3-dB habit and you ship a filter that is 3 dB down at 65 MHz:
+    legal Butterworth, failed spec.</p></div>
+  <p class="small muted">Claim 2, settled: 3 sections of Chebyshev = 4 of Butterworth for this spec. Homework Q1 asks you to predict this gap before the checker confirms it.</p>
+</section>
+
+<!-- 20 · group delay -->
+<section class="slide">
+  <div class="kicker">2.4 Group delay</div>
+  <h2>Where the steep filter pays</h2>
+  <div class="cols">
+    <div>
+      <div class="math">τ<sub>g</sub> = −dφ/dω</div>
+      <p class="small muted" style="text-align:center">φ = phase of S21 · flat τ<sub>g</sub> in band = distortionless</p>
+      <ul class="small" style="font-size:2.4vh">
+        <li>Delay <em class="term">peaks at the band edges</em> — edge poles sit nearest the jω axis; steeper amplitude ⇒ higher, sharper peaks.</li>
+        <li>Measured (both filters at the same 0.5-dB edges):<br>
+          Chebyshev N=3: <em class="term">68.3 ns</em> center, <em class="term">128.5</em> ns worst edge<br>
+          Butterworth N=4: 63.9 ns center, 99.2 ns edge — <em class="term">flatter despite the extra section</em>.</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="0 0 380 240" width="100%">
+        <line x1="40" y1="210" x2="370" y2="210" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="20" x2="40" y2="210" stroke="#1a1f2b" stroke-width="2"/>
+        <path d="M60 200 C 100 190 110 60 130 55 C 145 52 150 120 190 125 C 230 120 235 70 250 68 C 270 70 280 190 330 200"
+              fill="none" stroke="#0f62fe" stroke-width="2.5"/>
+        <path d="M60 185 C 100 165 115 95 140 92 C 175 88 205 88 240 92 C 265 95 290 165 330 185"
+              fill="none" stroke="#5b6472" stroke-width="2.5"/>
+        <line x1="130" y1="20" x2="130" y2="210" stroke="#1a1f2b" stroke-dasharray="3 5" opacity=".4"/>
+        <line x1="250" y1="20" x2="250" y2="210" stroke="#1a1f2b" stroke-dasharray="3 5" opacity=".4"/>
+        <text x="130" y="230" font-size="12" text-anchor="middle">55 MHz</text>
+        <text x="250" y="230" font-size="12" text-anchor="middle">65 MHz</text>
+        <text x="95" y="45" font-size="13" fill="#0f62fe">Chebyshev</text>
+        <text x="255" y="130" font-size="13" fill="#5b6472">Butterworth</text>
+        <text x="20" y="120" font-size="12" text-anchor="middle" transform="rotate(-90 20 120)">τ_g (ns)</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box rule"><p>Radar tie-in: 60 ns of in-band delay spread = c·Δτ/2 ≈ <em class="term">9 m of range
+    smear</em> on the echo's pulse edge (L15 pays for this). <em class="term">The steepest filter that meets the
+    rejection spec is not automatically the right filter.</em> (Delay-first designs: Bessel — named today, used
+    when a pulse comes out smeared.)</p></div>
+</section>
+
+<!-- 21 · where lumped stops -->
+<section class="slide">
+  <div class="kicker">2.5 Where lumped stops working</div>
+  <h2>The same recipe at 2.4 GHz — parts smaller than their parasitics</h2>
+  <div class="cols">
+    <div>
+      <p style="margin-bottom:1vh">60 MHz (this week — shelf parts):</p>
+      <table style="font-size:2.6vh; border-collapse:collapse">
+        <tr><td style="padding:.4vh 2vh">series</td><td style="padding:.4vh 2vh">1270 nH / 5.58 pF</td></tr>
+        <tr><td style="padding:.4vh 2vh">shunt</td><td style="padding:.4vh 2vh">20.3 nH / 349 pF</td></tr>
+      </table>
+      <p style="margin:2vh 0 1vh">2.4 GHz, 10% bandwidth (hour 3 prints it):</p>
+      <table style="font-size:2.6vh; border-collapse:collapse">
+        <tr style="background:#fdecea"><td style="padding:.4vh 2vh">series</td><td style="padding:.4vh 2vh">52.9 nH / <em class="term">0.083 pF</em></td></tr>
+        <tr style="background:#fdecea"><td style="padding:.4vh 2vh">shunt</td><td style="padding:.4vh 2vh"><em class="term">0.30 nH</em> / 14.5 pF</td></tr>
+      </table>
+    </div>
+    <div>
+      <ul>
+        <li>0.083 pF &lt; the parasitic of its own solder pad.</li>
+        <li>0.30 nH &lt; one via's inductance.</li>
+        <li>A real 53 nH coil self-resonates <em>below</em> 2.4 GHz — up there it is a capacitor.</li>
+      </ul>
+      <div class="box rule"><p class="small">What survives: the spec language, the g-values, the transformations,
+        the order formulas. Lecture 9 keeps the mathematics, swaps the hardware — Richards' transformation,
+        Kuroda's identities, coupled-line filters. Same brain, new copper.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 22 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in three sentences</h2>
+  <ul class="big">
+    <li>Bandpass = every g becomes a resonator at <em class="term">√(f₁f₂)</em> — geometric, and the checker measures every branch.</li>
+    <li>Order comes from the closed forms after mapping the <em class="term">binding</em> stop edge: 85 MHz → Ω = 4.294 → Chebyshev <em class="term">3</em>, Butterworth <em class="term">4</em>.</li>
+    <li>Group delay peaks at the edges and prices the steepness: <em class="term">60 ns spread ≈ 9 m</em> of radar smear.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 builds the whole machine — then breaks the center on purpose.</p>
+</section>
+
+<!-- 23 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in scipy + ABCD — every claim becomes a printed number</h2>
+  <ul>
+    <li>The recursion in a dozen lines; N = 1 closes by hand (<span class="mono">0.698623 = 0.698623</span>); the g-ladder vs scipy's poles: <em class="term">Δ = 1.4e-14 dB</em></li>
+    <li>Ripple's exchange rate, measured: <em class="term">40.52 vs 28.84 dB</em> at the same order</li>
+    <li>The IF filter synthesized: six components, all resonant at 59.7913 MHz; spec table — <em class="term">0.5000 / 52.38 / 40.52 dB</em>; skrf referee agrees to 4e-14</li>
+    <li>Group delay plotted — the 128.5 ns edge peak, the 9-meter line</li>
+    <li>The deliberate bug — f₀ = 60.00 MHz: rejections pass, the 55 MHz edge reads <em class="term">0.97 dB</em>. Both spec tables, side by side</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> —
+  Q1 (how many more sections for Butterworth?) and Q2 (which stop edge gets the thin margin?) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 8 · Filters I: The Insertion-Loss Method · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

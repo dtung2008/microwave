@@ -8,6 +8,10 @@ __pycache__/
 # regenerable figures (every lab regenerates its own PNGs; see VERIFY.md cleanup notes)
 lessons/**/lab/*.png
 
+# vendor Touchstone files — students download from vendor pages; never redistributed
+lessons/**/lab/*.s2p
+lessons/**/lab/*.s1p
+
 # instructor solutions and answer keys — kept local only, never published
 lessons/**/lab/solutions/
 

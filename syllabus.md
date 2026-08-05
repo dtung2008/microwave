@@ -155,7 +155,8 @@ explain a bounce diagram; identify when a line is "electrically long."
   Γ derivation and the reflected-power picture; standing-wave anatomy with the crank
   diagram previewing the Smith chart; Z_in(ℓ) derived and the quarter-wave inverter
   celebrated; loss, attenuation, and where the dB/m numbers come from; war story: the
-  half-wavelength jumper that "did nothing" at the bench at f₀ and everything at 2f₀.
+  half-wavelength jumper that "did nothing" at the bench at f₀ and everything at 1.5f₀
+  (where it turns 3λ/4 — at 2f₀ it is a full λ and transparent again).
 - H3 Tools: hand-rolled line engine in NumPy (Γ, SWR, Z_in vs ℓ and f); skrf
   `DefinedGammaZ0`/`DistributedCircuit` as the referee; standing-wave pattern animation;
   bounce-diagram demo; deliberate bug: forgetting the tangent's periodicity and
@@ -305,7 +306,8 @@ requirement; read a stackup like an RF engineer.
   package demo — watch the TE₁₀ mode refuse to propagate below cutoff; openEMS microstrip
   case-study files post-processed (instructor-exported Touchstone); deliberate bug: a
   microstrip "50 Ω" design that used ε_r instead of ε_eff for the wavelength — every stub
-  in the following lectures would land 20% long.
+  in the following lectures would land ~13% short on this stackup (measured; the match
+  resonates 1.5 GHz high).
 
 **Homework (~3 h) — "Design the board, spec the pipe."** One story: an X-band (10 GHz)
 sensor front-end needs (a) a 50 Ω microstrip environment on RO4350B and (b) a waveguide
@@ -364,9 +366,12 @@ synthetic resonator datasets (one with a coupling trap). Predict first: doubling
 how many more dB of worst-case in-band return loss for this ratio? Referee: skrf cascade
 sweep; `Qfactor` fits; the small-reflection theory's own ripple formula.
 
-**Success criterion.** Designed transformer's worst in-band RL within 0.5 dB of the
-Chebyshev theory value; minimum-N answer matches instructor's; Q extractions within 2%
-of `Qfactor` fits (and the coupling trap caught); predictions reconciled.
+**Success criterion.** Hand ABCD cascade of the designed transformer matches the skrf
+referee to 1e-12 in |Γ|; the theory-vs-exact-sweep gap (small-reflection approximation
+error, +1–2 dB at this 4:1 ratio — measured, and itself course content) quoted and
+reconciled; minimum-N answer correct by exact sweep (N = 3, not theory's N = 2);
+Q extractions within 2% of `Qfactor` fits (and the coupling trap caught); predictions
+reconciled.
 
 **Setup (Tier A).** Same env.
 

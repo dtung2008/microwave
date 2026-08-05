@@ -92,3 +92,8 @@ institutional access; never link mirrors). Verified 2026-08-04 where a link is g
 - [R38] MathWorks, *Phased Array System Toolbox* / *Radar Toolbox* documentation (free to
   read; worked FMCW/micro-Doppler examples): <https://www.mathworks.com/help/phased/> ·
   <https://www.mathworks.com/help/radar/>
+- [R39] H. A. Wheeler, "Transmission-Line Properties of Parallel Strips Separated by a
+  Dielectric Sheet," *IEEE Trans. MTT* 13(2):172–185, 1965. (Microstrip analysis —
+  cited by lecture 5.)
+- [R40] E. J. Wilkinson, "An N-Way Hybrid Power Divider," *IRE Trans. MTT* 8(1):116–118,
+  1960. (Cited by lecture 7.)

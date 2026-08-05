@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 12 · Principles — Mixers, Detectors &amp; Receiver Architectures</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 12 · Hours 1–2</div>
+  <h1>Mixers, Detectors<br>&amp; Receiver Architectures</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: behavioral mixers in NumPy, live → homework: the frequency plan</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer, <em>Microwave and RF Design</em> Vol. 5, ch. 5–6 (free) · Pozar ch. 13 · TI SPYY005 (the automotive-radar receiver pictures)</p>
+</section>
+
+<!-- 2 · why conversion -->
+<section class="slide">
+  <div class="kicker">1.1 Why frequency conversion exists</div>
+  <h2>Your LNA hands you 10 GHz. Now what?</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box"><p><em class="term">Gain</em></p><p class="small muted">100 dB at 10 GHz: mW per dB, and lecture 11's stability nightmares through every stray coupling</p></div>
+    <div class="box"><p><em class="term">Filtering</em></p><p class="small muted">a 10 MHz channel at 10 GHz is 0.1% fractional bandwidth — lecture 8's order formula laughs</p></div>
+    <div class="box"><p><em class="term">Digitizing</em></p><p class="small muted">a 10 GHz ADC (analog-to-digital converter) is a research budget; 100 MS/s (megasamples per second) is lunch money</p></div>
+  </div>
+  <div class="box rule"><p><em class="term">Gain, filtering, and ADCs live at low frequency.</em>
+    So we move the signal — without disturbing the information riding on it. The mixer does the moving;
+    the LNA (low-noise amplifier, L11) guards the noise figure while it happens.</p></div>
+  <p class="small muted" style="margin-top:1.5vh">"Why not sample at RF (radio frequency) directly?" — you can (below ~6 GHz); the sampler is itself a mixer, and every problem on this slide relocates instead of leaving. Slide 15.</p>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why this lecture exists</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">Mixing is multiplication — and multiplication needs nonlinearity.</em><br>
+      <span class="muted">A linear circuit can never create a new frequency. Every mixer is a nonlinearity or a switch in a suit.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">The mixer is a perfect mirror.</em><br>
+      <span class="muted">Two RF frequencies land on one IF, indistinguishably. The only defenses act <em>before</em> the mixer.</span></li>
+    <li><em class="term">The oscillator's skirt is a system parameter.</em><br>
+      <span class="muted">Phase noise, in dBc/Hz, decides how slow a drone your Doppler radar can see. Today: that number is 2.54 m/s.</span></li>
+  </ol>
+  <p class="small muted" style="margin-top:2vh">IF = intermediate frequency, the fixed low frequency the receiver converts to · dBc/Hz = dB relative to the carrier, per hertz. Both get their own slides.</p>
+</section>
+
+<!-- 4 · the trig identity -->
+<section class="slide">
+  <div class="kicker">1.2 Mixing is multiplication</div>
+  <h2>One line of trig runs the receiver industry</h2>
+  <div class="math" style="font-size:4vh">cos(ω₁t)·cos(ω₂t) = ½ cos((ω₁−ω₂)t) + ½ cos((ω₁+ω₂)t)</div>
+  <p class="small muted" style="text-align:center">RF × LO (local oscillator) → a copy at the difference — the IF (intermediate frequency) — and a copy at the sum, filtered off.</p>
+  <div class="box rule"><p>The ½ is a price: the kept sideband carries power ¼ —
+    an ideal multiplier converts at <em class="term">−6.02 dB</em>. Amplitude and phase of the RF ride through untouched:
+    the information <em>moved</em>; nothing about it changed. Hour 3 measures both claims by FFT.</p></div>
+  <div class="box trap"><p><em class="term">Claim 1, formally:</em> sinusoids are eigenfunctions of linear
+    time-invariant systems (lecture 2's phasor bargain). New frequencies require multiplication —
+    nonlinearity or switching. There is no third way.</p></div>
+</section>
+
+<!-- 5 · square-law detector -->
+<section class="slide">
+  <div class="kicker">1.3 The diode detector</div>
+  <h2>The square-law detector — the mixer's ancestor</h2>
+  <div class="cols">
+    <div>
+      <p>The diode, Taylor-expanded (lecture 10):</p>
+      <div class="math">i ≈ a₁v + a₂v² + a₃v³ + …</div>
+      <p>Feed a₂v² a modulated carrier v = A(t)·cos ωt:</p>
+      <div class="math">a₂A²(t)/2 · (1 + cos 2ωt)</div>
+      <p class="small muted">baseband term ∝ A² — the <em class="term">envelope</em>, carrier discarded; the 2ω term goes to the capacitor.</p>
+    </div>
+    <div>
+      <div class="box rule"><p><em class="term">Square law</em> = output ∝ input <em>power</em> —
+        true while the signal is small (≲ −20 dBm for a typical Schottky); driven harder it slides into
+        linear peak detection.</p></div>
+      <div class="box"><p class="small">This is the crystal radio and the diode power sensor: no LO, no tuning —
+        and no selectivity, brutal sensitivity. Lecture 1's radar does not hunt drones with a crystal radio.
+        Give the same diode an LO, though…</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · single-diode mixer, the grid -->
+<section class="slide">
+  <div class="kicker">1.3 The single-diode mixer</div>
+  <h2>Pump the diode with an LO — and inherit the whole grid</h2>
+  <div class="cols">
+    <div>
+      <p>With v = v<sub>RF</sub> + v<sub>LO</sub>, the a₂v² term contains</p>
+      <div class="math">2a₂ · v<sub>RF</sub> · v<sub>LO</sub></div>
+      <p>— slide 4's multiplication, manufactured by a nonlinearity. That cross-term is the IF.</p>
+      <div class="box trap"><p>But a₃, a₄, … make everything else too. The output contains
+        <em class="term">every |m·f<sub>LO</sub> ± n·f<sub>RF</sub>|</em>.
+        The grid is not a footnote — it is homework module 1.</p></div>
+    </div>
+    <div>
+      <div class="box"><p class="small">Hour 3, measured (behavioral diode, exp(v), audio rate):
+        all <em class="term">24 products to order 3</em> land in their exact predicted FFT bins —
+        (2,2) at −31.9 dBc, (3,3) at −62.8 dBc, and 4·f<sub>LO</sub> at −41.8 dBc beyond the grid's edge.</p></div>
+      <div class="box"><p class="small">Every product is a door an interferer can walk through.
+        <em class="term">Frequency planning</em> is deciding, in advance, that nobody strong lives behind any of them.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · switching mixer -->
+<section class="slide">
+  <div class="kicker">1.3 Real mixers are switches</div>
+  <h2>The Fourier view — and the 3.92 dB floor</h2>
+  <div class="cols">
+    <div>
+      <p>An LO-pumped diode is ON half the cycle, OFF the other: the RF is multiplied by a ±1 square wave,</p>
+      <div class="math" style="font-size:2.9vh">sq(t) = (4/π)[cos ω<sub>LO</sub>t − ⅓cos 3ω<sub>LO</sub>t + ⅕cos 5ω<sub>LO</sub>t − …]</div>
+      <p>Products at (odd m)·f<sub>LO</sub> ± f<sub>RF</sub>; the wanted line gets amplitude 2/π.</p>
+    </div>
+    <div>
+      <div class="box rule"><p>Ideal switching conversion loss:
+        <em class="term">20·log₁₀(π/2) = 3.92 dB</em>. Real diode mixers: 6–8 dB
+        (series resistance, mismatch, re-converted products). Hour 3 measures −3.92 exactly.</p></div>
+      <div class="box"><p class="small">Why datasheets shout about <em class="term">LO drive</em> (+7/+13/+17 dBm):
+        the LO is the switch's power supply. A starved switch multiplies badly — loss rises, the grid blooms.
+        <em class="term">Balance</em> (double-balanced rings) cancels even-order products and leak-through
+        ~50–60 dB by symmetry — but the image is order (1,1). Balance cleans the grid; it does not un-mirror the mirror.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · the image -->
+<section class="slide">
+  <div class="kicker">1.4 The image frequency</div>
+  <h2>The mirror: two frequencies, one IF</h2>
+  <div class="cols">
+    <div>
+      <p>The receiver keeps |f<sub>LO</sub> − f<sub>RF</sub>| = f<sub>IF</sub>. Solve for f<sub>RF</sub>: <em class="term">two</em> solutions —</p>
+      <div class="math">f<sub>RF</sub> = f<sub>LO</sub> + f<sub>IF</sub> &nbsp;&nbsp;or&nbsp;&nbsp; f<sub>LO</sub> − f<sub>IF</sub></div>
+      <p>Both exactly IF from the LO, one per side, equal conversion gain. The unwanted one is the
+        <em class="term">image</em> — <span class="accent">2·IF away from the signal</span>.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 420 240" width="100%">
+        <line x1="20" y1="150" x2="400" y2="150" stroke="#1a1f2b" stroke-width="2.5"/>
+        <g stroke-width="3">
+          <line x1="210" y1="150" x2="210" y2="55" stroke="#5b6472"/>
+          <line x1="320" y1="150" x2="320" y2="70" stroke="#0f62fe"/>
+          <line x1="100" y1="150" x2="100" y2="70" stroke="#b3261e" stroke-dasharray="6 4"/>
+        </g>
+        <g font-size="15" text-anchor="middle">
+          <text x="210" y="45" fill="#5b6472">LO</text>
+          <text x="320" y="60" fill="#0f62fe">signal = LO + IF</text>
+          <text x="100" y="60" fill="#b3261e">image = LO − IF</text>
+        </g>
+        <path d="M320 155 Q 265 205 218 158" fill="none" stroke="#0f62fe" stroke-width="2"/>
+        <path d="M100 155 Q 155 205 202 158" fill="none" stroke="#b3261e" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="210" y="222" font-size="15" text-anchor="middle">both fold onto f<tspan baseline-shift="sub" font-size="11">IF</tspan></text>
+        <g font-size="13" fill="#5b6472" text-anchor="middle">
+          <text x="155" y="143">IF</text><text x="265" y="143">IF</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+  <div class="box trap"><p>Hour 3, by construction: signal alone → IF bin amp 0.50; image alone → same bin, 0.25;
+    both → 0.75. <em class="term">One bin, two owners, inseparable after the mixer.</em> The defense was before the mixer or nowhere.</p></div>
+</section>
+
+<!-- 9 · image consequences -->
+<section class="slide">
+  <div class="kicker">1.4 The image frequency</div>
+  <h2>What the mirror costs — and the shuttle-bus radar</h2>
+  <ul>
+    <li><em class="term">Noise folds too:</em> an unfiltered image adds up to 3 dB of noise figure —
+      the DSB vs SSB (double- vs single-sideband) NF split on every mixer datasheet.</li>
+    <li><em class="term">High-side LO inverts the IF spectrum</em> (the fold reverses frequency order):
+      a positive Doppler arrives as a negative IF offset. Your processing must know the LO side — or every velocity has the wrong sign (L15).</li>
+  </ul>
+  <div class="box trap">
+    <p class="small">War story: campus perimeter radar, S-band, 2.9 GHz, low-side LO 2.65 GHz, IF 250 MHz.
+    Commissioning week it detected <em>every airport shuttle bus</em> at extraordinary range — and only shuttle buses.
+    2.9 − 2×0.25 = <em class="term">2.4 GHz: the image band was the parking lot's Wi-Fi</em>; every bus carried an access point.
+    Nothing was broken. The radar worked perfectly — as a Wi-Fi detector. The fix was a frequency plan, not a repair.</p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">"Can't I just filter the image?" — yes, if it is far enough away to filter. The image sits 2·IF out, so the <em>IF choice</em> sets the filter difficulty. Hour 2 opens there.</p>
+</section>
+
+<!-- 10 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in four sentences</h2>
+  <ul class="big">
+    <li>Conversion exists because <em class="term">gain, filtering, and ADCs live low</em>.</li>
+    <li>Mixing is multiplication; nonlinearity or switching supplies it — with the whole
+      <em class="term">m·f<sub>LO</sub> ± n·f<sub>RF</sub> grid</em> attached, and a 3.92 dB switching floor.</li>
+    <li>The image is a <em class="term">perfect mirror at 2·IF</em>, folded noise included; nothing downstream unfolds it.</li>
+    <li>A radar once detected shuttle buses because nobody asked who transmits in the image band.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2: how to ask — architecture, the frequency plan, and the oscillator's skirt.</p>
+</section>
+
+<!-- 11 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Architectures, the Plan,<br>and the Skirt</h1>
+  <p class="muted" style="margin-top:3vh">The superheterodyne · choosing the IF · direct conversion's demons · phase noise vs the slow drone · the FMCW dechirp receiver</p>
+</section>
+
+<!-- 12 · superhet -->
+<section class="slide">
+  <div class="kicker">2.1 The superheterodyne</div>
+  <h2>Armstrong 1918: tune the LO, fix everything else</h2>
+  <svg viewBox="0 0 780 250" width="100%">
+    <g font-size="13" text-anchor="middle">
+      <rect x="10"  y="60" width="105" height="52" rx="8" fill="#eef2f7"/><text x="62" y="82">preselector</text><text x="62" y="100" fill="#5b6472">10.0–10.4 GHz</text>
+      <rect x="135" y="60" width="80" height="52" rx="8" fill="#eef2f7"/><text x="175" y="82">LNA</text><text x="175" y="100" fill="#5b6472">L11</text>
+      <circle cx="285" cy="86" r="27" fill="#dbe8ff" stroke="#0f62fe" stroke-width="2"/>
+      <line x1="266" y1="67" x2="304" y2="105" stroke="#0f62fe" stroke-width="2"/>
+      <line x1="304" y1="67" x2="266" y2="105" stroke="#0f62fe" stroke-width="2"/>
+      <text x="285" y="42" fill="#0f62fe" font-weight="700">mixer</text>
+      <rect x="240" y="160" width="95" height="48" rx="8" fill="#eef2f7"/><text x="287" y="181">LO</text><text x="287" y="199" fill="#5b6472">10.32–10.72 GHz</text>
+      <line x1="285" y1="160" x2="285" y2="113" stroke="#5b6472" stroke-width="2"/>
+      <rect x="345" y="60" width="100" height="52" rx="8" fill="#dbe8ff"/><text x="395" y="82">IF filter</text><text x="395" y="100" fill="#5b6472">321.4 MHz · 10 MHz</text>
+      <rect x="465" y="60" width="85" height="52" rx="8" fill="#eef2f7"/><text x="507" y="82">IF gain</text><text x="507" y="100" fill="#5b6472">cheap here</text>
+      <rect x="570" y="60" width="90" height="52" rx="8" fill="#eef2f7"/><text x="615" y="82">ADC</text><text x="615" y="100" fill="#5b6472">100 MS/s</text>
+      <rect x="680" y="60" width="90" height="52" rx="8" fill="#fdecea"/><text x="725" y="82">DSP</text><text x="725" y="100" fill="#b3261e">L14–16</text>
+      <g stroke="#5b6472" stroke-width="2" fill="none">
+        <line x1="115" y1="86" x2="135" y2="86"/><line x1="215" y1="86" x2="258" y2="86"/>
+        <line x1="312" y1="86" x2="345" y2="86"/><line x1="445" y1="86" x2="465" y2="86"/>
+        <line x1="550" y1="86" x2="570" y2="86"/><line x1="660" y1="86" x2="680" y2="86"/>
+      </g>
+      <text x="62" y="135" fill="#5b6472" font-size="12">passes the whole tuning band</text>
+      <text x="395" y="135" fill="#0f62fe" font-size="12">the real selectivity — fixed, sharp, cheap</text>
+    </g>
+  </svg>
+  <div class="box rule"><p>Convert the tunable RF problem to a <em class="term">fixed IF</em> where gain is cheap,
+    filters are sharp, and the ADC is happy. Tune by moving the LO, never the filters. A century old; still the default.</p></div>
+  <p class="small muted" style="margin-top:1.2vh">DSP = digital signal processing — lectures 14–16 live in that last box.</p>
+</section>
+
+<!-- 13 · the IF squeeze -->
+<section class="slide">
+  <div class="kicker">2.1 Frequency planning</div>
+  <h2>Choosing the IF is a two-sided squeeze</h2>
+  <div class="cols">
+    <div>
+      <div class="box rule"><p><em class="term">Image rejection wants IF high.</em>
+        The image sits 2·IF out. Our preselector must pass all of 10.0–10.4 GHz — so if
+        2·IF &lt; 400 MHz the image lands <em>inside our own band</em>. No filter order fixes that.<br>
+        <span class="accent">Hard rule: IF &gt; 200 MHz — architectural, not parametric.</span></p></div>
+    </div>
+    <div>
+      <div class="box rule"><p><em class="term">Everything else wants IF low.</em>
+        Low-frequency filters are low-order (lecture 8's Ω<sub>s</sub> grows with offset/f₀);
+        IF gain is cheap; the ADC's analog input bandwidth (500 MHz) caps the ride.</p></div>
+    </div>
+  </div>
+  <div class="box trap"><p>Candidate IF = 60 MHz (lecture 8's classic): image 120 MHz out —
+    inside the tuning band. <em class="term">Dead on arrival, by architecture.</em>
+    Candidate IF = 321.4 MHz (a real catalog filter): image 642.8 MHz out — plannable. Which side of the LO? The emitter table votes next.</p></div>
+</section>
+
+<!-- 14 · the plan worked -->
+<section class="slide">
+  <div class="kicker">2.1 Frequency planning</div>
+  <h2>The board work: IF = 321.4 MHz, and the emitter table votes</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.3vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 1.6vh">site survey</td><td style="padding:.4vh 1.6vh">band (GHz)</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">marine radars</td><td style="padding:.4vh 1.6vh">9.30–9.50</td></tr>
+        <tr style="background:#fdecea"><td style="padding:.4vh 1.6vh">airfield radar (2 km)</td><td style="padding:.4vh 1.6vh"><em class="term">9.60</em></td></tr>
+        <tr><td style="padding:.4vh 1.6vh">police / amateur</td><td style="padding:.4vh 1.6vh">10.50–10.55</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">backhaul (same mast)</td><td style="padding:.4vh 1.6vh">11.20–11.70</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box trap"><p class="small"><em class="term">Low-side LO:</em> image band
+        <span class="warn">9.357–9.757 GHz</span> — contains the airfield radar and half the marine band.
+        Tuned to 10.243 GHz, the 9.6 GHz radar <em>is</em> the image. Dead.</p></div>
+      <div class="box rule"><p class="small"><em class="term">High-side LO:</em> image band
+        <span class="accent">10.643–11.043 GHz</span> — clear of everything.
+        <em class="term">Verdict: high-side, IF = 321.4 MHz.</em></p></div>
+    </div>
+  </div>
+  <div class="box"><p class="small">The algebra had two solutions; <em class="term">the emitter table voted.</em>
+    The homework audits every product to order 3 — and finds one survivor: a (2,2) product of the police band.
+    The IF filter cannot see it (the product arrives <em>at</em> the IF); the preselector's spec point is the image, not 10.5 GHz.
+    The dependable number belongs to <em class="term">mixer balance</em> (ANSWERS Q3).</p></div>
+</section>
+
+<!-- 15 · the ADC is a mixer -->
+<section class="slide">
+  <div class="kicker">2.1 Frequency planning · the ADC</div>
+  <h2>The sampler is a mixer too — Nyquist zones</h2>
+  <div class="cols">
+    <div>
+      <p>Sampling at f<sub>s</sub> folds the axis at every multiple of f<sub>s</sub>/2. Each interval
+        [k·f<sub>s</sub>/2, (k+1)·f<sub>s</sub>/2] is a <em class="term">Nyquist zone</em>; a band that fits
+        <em>one zone</em> lands intact at baseband (order-reversed in odd zones).</p>
+      <div class="box rule"><p class="small">321.4 MHz ± 5 MHz sits mid-zone-6 of a 100 MS/s converter →
+        <em class="term">undersampling</em>, standard practice. The IF filter doubles as the anti-alias filter.
+        Real ADC constraints: zone fit + 500 MHz input bandwidth. (Hour 3 already watched a line alias, live.)</p></div>
+    </div>
+    <div>
+      <p style="margin-bottom:1vh">The plan's filter bill, in lecture 8's language (Chebyshev, 0.5 dB ripple, 60 dB):</p>
+      <table style="font-size:2.4vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 1.6vh">filter</td><td style="padding:.4vh 1.6vh">job</td><td style="padding:.4vh 1.6vh">order</td></tr>
+        <tr><td style="padding:.4vh 1.6vh">preselector, 10.2 GHz</td><td style="padding:.4vh 1.6vh">60 dB at 10.643</td><td style="padding:.4vh 1.6vh"><em class="term">n = 7</em></td></tr>
+        <tr><td style="padding:.4vh 1.6vh">IF, 321.4 MHz</td><td style="padding:.4vh 1.6vh">60 dB at zone edges</td><td style="padding:.4vh 1.6vh"><em class="term">n = 4</em></td></tr>
+      </table>
+      <p class="small muted" style="margin-top:1.5vh">Two numbers that <em>are</em> the sentence "filtering lives low" — and the IF filter is doing the harder fractional job (Q4).</p>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · direct conversion -->
+<section class="slide">
+  <div class="kicker">2.2 Direct conversion — one honest slide</div>
+  <h2>Set IF = 0: no image band, new demons</h2>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:1vh">
+    <div class="box trap"><p><em class="term">DC offset</em></p><p class="small muted">the LO leaks into its own mixer and self-mixes to a rock-solid error at DC (direct current) — on your signal</p></div>
+    <div class="box trap"><p><em class="term">Flicker</em></p><p class="small muted">the transistors' 1/f corner sits mid-channel</p></div>
+    <div class="box trap"><p><em class="term">IQ imbalance</em></p><p class="small muted">the in-phase/quadrature mixer pair never quite matches; the constellation smears</p></div>
+    <div class="box trap"><p><em class="term">Even-order IMD</em></p><p class="small muted">a₂ intermodulation lands at DC here (harmless in a superhet) — hence the IIP2 spec (input second-order intercept, lecture 10's IP3 sibling)</p></div>
+  </div>
+  <div class="box rule"><p>Fixable with per-chip calibration and DSP at smartphone volumes — every phone does it.
+    But a radar hunting <em class="term">slow things near zero Doppler</em> should not park its most precious
+    octave on top of its own DC offset and flicker corner. <em class="term">The course radar stays superhet.</em></p></div>
+</section>
+
+<!-- 17 · phase noise defined -->
+<section class="slide">
+  <div class="kicker">2.3 Oscillators &amp; phase noise</div>
+  <h2>Reading the skirt: L(f) in dBc/Hz</h2>
+  <div class="cols">
+    <div>
+      <p>A real oscillator (VCO — voltage-controlled oscillator — plus PLL, phase-locked loop) is
+        cos(2πf₀t + φ(t)). The phase-noise spectrum is quoted as
+        <em class="term">L(f), dBc/Hz</em>: dB relative to the carrier, per hertz, at offset f.</p>
+      <div class="box rule"><p class="small">The course LO, read aloud: <em class="term">−40</em> flat inside the 10 Hz PLL loop ·
+        <em class="term">−30 dB/dec</em> to −70 at 100 Hz (1/f³) · <em class="term">−20 dB/dec</em>: −90 at 1 kHz, −110 at 10 kHz.
+        Integrated: <em class="term">3.13° RMS</em> — a superb number. Hold that thought for slide 19.</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 400 260" width="100%">
+        <line x1="50" y1="20" x2="50" y2="220" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="50" y1="220" x2="380" y2="220" stroke="#1a1f2b" stroke-width="2"/>
+        <polyline points="50,60 116,60 182,120 248,160 314,200" fill="none" stroke="#0f62fe" stroke-width="3"/>
+        <g font-size="12" fill="#5b6472">
+          <text x="55" y="52">−40 (PLL flat)</text>
+          <text x="150" y="100">−30 dB/dec</text>
+          <text x="240" y="140">−20 dB/dec</text>
+        </g>
+        <g font-size="12" fill="#1a1f2b" text-anchor="middle">
+          <text x="116" y="238">10</text><text x="182" y="238">100</text>
+          <text x="248" y="238">1k</text><text x="314" y="238">10k</text>
+          <text x="215" y="256">offset from carrier (Hz)</text>
+        </g>
+        <g font-size="12" fill="#1a1f2b" text-anchor="end">
+          <text x="45" y="64">−40</text><text x="45" y="124">−70</text>
+          <text x="45" y="164">−90</text><text x="45" y="204">−110</text>
+        </g>
+        <circle cx="182" cy="120" r="4" fill="#b3261e"/>
+        <text x="190" y="116" font-size="12" fill="#b3261e">read: L(100 Hz) = −70 dBc/Hz</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · Leeson -->
+<section class="slide">
+  <div class="kicker">2.3 Oscillators &amp; phase noise</div>
+  <h2>Leeson, qualitatively — where skirts come from</h2>
+  <div class="box rule">
+    <p>An oscillator is <em class="term">an amplifier whose noise circulates through a resonator forever</em>.
+    Inside the resonator's half-bandwidth f₀/2Q the loop integrates phase kicks → 1/f² skirt
+    (device flicker stacks 1/f³ close in); outside, the amplifier's plain floor.</p>
+  </div>
+  <ul style="margin-top:2vh">
+    <li>Three levers, only: <em class="term">resonator Q</em> (lecture 6), <em class="term">power through the loop</em>, <em class="term">device flicker</em>.</li>
+    <li>A 10 GHz microstrip-resonator VCO (Q ≈ 100) wears a wide skirt; sapphire or multiplied-crystal sources wear narrow ones.</li>
+    <li>"Just buy a cleaner oscillator" = "buy a better resonator" — there is no third lever to pull.</li>
+  </ul>
+  <p class="small muted" style="margin-top:2vh">Full Leeson derivation: a second course. What a system engineer needs is the plot on slide 17 and the arithmetic on slide 20.</p>
+</section>
+
+<!-- 19 · skirt vs drone -->
+<section class="slide">
+  <div class="kicker">2.3 Phase noise at system level</div>
+  <h2>The skirt stands on the slow drone</h2>
+  <div class="cols">
+    <div>
+      <p>Every downconverted echo wears the LO's skirt. Usually harmless — 70 dB down. But
+        <em class="term">clutter</em> (the ground) is <em class="term">+60 dB over the drone</em> (L14's number),
+        parked at zero Doppler, wearing the full skirt.</p>
+      <p style="margin-top:1.5vh">The drone's line sits at f<sub>d</sub> = 2v/λ ≈ <em class="term">68 Hz per m/s</em> (10.2 GHz).
+        A slow drone must out-shout <em>the clutter's skirt at its own offset</em> — not the thermal floor.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 400 250" width="100%">
+        <line x1="30" y1="210" x2="380" y2="210" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="60" y1="210" x2="60" y2="30" stroke="#5b6472" stroke-width="5"/>
+        <path d="M60 60 Q 130 185 370 205" fill="none" stroke="#5b6472" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <line x1="150" y1="210" x2="150" y2="130" stroke="#b3261e" stroke-width="4"/>
+        <line x1="290" y1="210" x2="290" y2="130" stroke="#0f62fe" stroke-width="4"/>
+        <g font-size="13" text-anchor="middle">
+          <text x="60" y="22" fill="#5b6472">clutter (+60 dB)</text>
+          <text x="150" y="122" fill="#b3261e">1 m/s: under the skirt</text>
+          <text x="290" y="122" fill="#0f62fe">3 m/s: clear</text>
+          <text x="205" y="240" fill="#1a1f2b">Doppler offset →</text>
+        </g>
+        <text x="230" y="172" font-size="12" fill="#5b6472">the skirt: clutter × L(f)</text>
+      </svg>
+    </div>
+  </div>
+  <div class="box trap"><p>Hour 3, measured: at 60 dB clutter, the <em class="term">3 m/s</em> drone clears the skirt by 14.4 dB;
+    the <em class="term">1 m/s</em> drone shows 2.5 dB — <em class="term">buried</em>. Same RCS (radar cross section), same range, same power.
+    You can lose a target to a component that consumed zero dB of the link budget.</p></div>
+</section>
+
+<!-- 20 · v_min worked -->
+<section class="slide">
+  <div class="kicker">2.3 Phase noise at system level</div>
+  <h2>The minimum visible speed, in four lines</h2>
+  <div class="box rule">
+    <p>Visible ⇔ line clears local skirt by 13 dB in the Doppler bin (ENBW — equivalent noise bandwidth — 1.5 Hz for a 1 s Hann frame):</p>
+    <div class="math" style="font-size:3vh">L(f<sub>d</sub>) ≤ −60 − 13 − 10log₁₀(1.5) = <em class="term">−74.8 dBc/Hz</em></div>
+    <p>Read the profile backwards (−20 dB/dec segment): f<sub>d</sub> = 100·10<sup>4.76/20</sup> = <em class="term">173 Hz</em> →
+      v<sub>min</sub> = 173/68 = <em class="term">2.54 m/s</em>.</p>
+  </div>
+  <div class="box"><p>And the slope is the price list: in the −20 dB/dec region,
+    <em class="term">every halving of speed costs 6.02 dB</em> of margin (9 dB per halving below 100 Hz).
+    Homework Q2 makes you predict this before running. Fine print: TX and LO share the oscillator, so close-in clutter
+    partially cancels (range correlation) — our number is the honest long-range worst case.</p></div>
+</section>
+
+<!-- 21 · FMCW dechirp -->
+<section class="slide">
+  <div class="kicker">2.4 The FMCW dechirp receiver</div>
+  <h2>The mixer is the ranging engine</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 400 250" width="100%">
+        <line x1="40" y1="200" x2="380" y2="200" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="200" x2="40" y2="30" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="60" y1="180" x2="250" y2="50" stroke="#0f62fe" stroke-width="3"/>
+        <line x1="110" y1="180" x2="300" y2="50" stroke="#b3261e" stroke-width="3" stroke-dasharray="7 4"/>
+        <line x1="180" y1="98" x2="180" y2="132" stroke="#1a1f2b" stroke-width="2"/>
+        <g font-size="13">
+          <text x="150" y="45" fill="#0f62fe">TX chirp, slope α</text>
+          <text x="255" y="70" fill="#b3261e">echo, delayed τ = 2R/c</text>
+          <text x="188" y="120">f_b = α·τ (constant!)</text>
+          <text x="330" y="218">t</text><text x="22" y="40">f</text>
+          <text x="85" y="218" fill="#5b6472">τ</text>
+        </g>
+        <line x1="60" y1="205" x2="110" y2="205" stroke="#5b6472" stroke-width="2"/>
+      </svg>
+    </div>
+    <div>
+      <p>FMCW (frequency-modulated continuous wave): transmit a ramp, B hertz in T<sub>c</sub> seconds, slope α = B/T<sub>c</sub> —
+        and mix the echo <em class="term">with the transmit chirp itself</em>. The LO is the waveform.</p>
+      <div class="math">f<sub>b</sub> = α·τ = 2Rα/c</div>
+      <div class="box rule"><p class="small">A constant delay became a constant <em class="term">beat tone</em>:
+        range is now a frequency, and the receiver is <em class="term">a mixer plus an FFT</em>.
+        Full derivation (and the range–Doppler coupling fine print): lecture 15.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 22 · FMCW numbers -->
+<section class="slide">
+  <div class="kicker">2.4 The FMCW dechirp receiver</div>
+  <h2>Why every automotive radar is built this way</h2>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big">4×10¹¹ Hz/s</p><p class="small muted">α: the course radar's 400 MHz chirped in 1 ms (L15)</p></div>
+    <div class="box" style="text-align:center"><p class="big">2668.5</p><p class="small muted">Hz of beat per meter of range (2α/c)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">8.01 MHz</p><p class="small muted">the drone at 3 km, at the ADC</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">18.74 km</p><p class="small muted">range covered by the 100 MS/s ADC's first zone</p></div>
+  </div>
+  <div class="box rule"><p>A <em class="term">400 MHz-wide</em> transmitted problem arrived at the ADC as a
+    single-digit-MHz tone. The mixer performed the compression — analog, free, before the first sample.
+    That is TI's 77 GHz world [R34], and lecture 15's opening move.</p></div>
+</section>
+
+<!-- 23 · architectures compared -->
+<section class="slide">
+  <div class="kicker">2.4 Receiver architectures</div>
+  <h2>Three architectures, one table</h2>
+  <table style="font-size:2.3vh; border-collapse:collapse; margin-top:1vh">
+    <tr class="muted small"><td style="padding:.6vh 1.6vh"></td><td style="padding:.6vh 1.6vh">superheterodyne</td><td style="padding:.6vh 1.6vh">direct conversion</td><td style="padding:.6vh 1.6vh">FMCW dechirp</td></tr>
+    <tr><td style="padding:.6vh 1.6vh">LO</td><td style="padding:.6vh 1.6vh">offset by IF, tunes</td><td style="padding:.6vh 1.6vh">on the carrier</td><td style="padding:.6vh 1.6vh"><em class="term">the TX waveform itself</em></td></tr>
+    <tr><td style="padding:.6vh 1.6vh">image</td><td style="padding:.6vh 1.6vh">at 2·IF — <em class="term">plan for it</em></td><td style="padding:.6vh 1.6vh">own other sideband (IQ handles)</td><td style="padding:.6vh 1.6vh">negative beat — one-sided for static scenes (Q5)</td></tr>
+    <tr><td style="padding:.6vh 1.6vh">demons</td><td style="padding:.6vh 1.6vh">image, spur grid</td><td style="padding:.6vh 1.6vh">DC, flicker, IQ, IIP2</td><td style="padding:.6vh 1.6vh">TX leakage, range–Doppler coupling (L15)</td></tr>
+    <tr><td style="padding:.6vh 1.6vh">who uses it</td><td style="padding:.6vh 1.6vh">radar, satcom, lab gear</td><td style="padding:.6vh 1.6vh">every phone</td><td style="padding:.6vh 1.6vh">every automotive radar</td></tr>
+  </table>
+  <p class="small muted" style="margin-top:2vh">All three are the same trig identity wearing different LOs. Choose by what your system can afford to fight.</p>
+</section>
+
+<!-- 24 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in four sentences</h2>
+  <ul class="big">
+    <li>The superhet fixes the IF and tunes the LO; the IF choice is a squeeze — ours: <em class="term">high-side, 321.4 MHz</em>, preselector n = 7, IF filter n = 4, and the <em class="term">emitter table voted</em>.</li>
+    <li>Direct conversion trades the image for DC demons; radar declines.</li>
+    <li>The skirt prices the slowest visible drone: <em class="term">2.54 m/s</em> — 3° of jitter erased the hovering drone.</li>
+    <li>FMCW promotes the mixer to ranging engine: 400 MHz of problem, <em class="term">8 MHz of ADC</em>.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 builds all of it — and breaks one frequency plan the shuttle-bus way.</p>
+</section>
+
+<!-- 25 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in NumPy — every claim becomes a printed number</h2>
+  <ul>
+    <li>cos·cos by FFT — two lines, amp 0.5000, <em class="term">−6.02 dB</em>, next bin 10⁻¹⁴</li>
+    <li>The ±1 switching mixer — <em class="term">−3.92 dB</em> measured, odd-m comb, and one line caught <em>aliasing</em></li>
+    <li>The image by construction — one bin, two owners: 0.50 + 0.25 = 0.75</li>
+    <li>The behavioral diode — <em class="term">24/24 products</em> in their exact predicted bins</li>
+    <li>The plan calculator — and the deliberate bug: a plan that passes every self-check with its image parked on the 9.6 GHz airfield radar</li>
+    <li>The skirt vs the slow drone — 3 m/s visible, 1 m/s buried; the dechirp teaser: beat = α·τ, measured</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> —
+  Q1 (which LO side survives 9.6 GHz) and Q2 (the price of hovering) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 12 · Mixers, Detectors &amp; Receiver Architectures · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

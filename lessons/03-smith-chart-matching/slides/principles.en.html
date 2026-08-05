@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 3 · Principles — The Smith Chart &amp; Impedance Matching</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 3 · Hours 1–2</div>
+  <h1>The Smith Chart<br>&amp; Impedance Matching</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: scikit-rf Smith plotting, two matches built live, one deliberate sin → homework: match the antenna, twice</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Steer Vol. 3 ch. 6 (free) · Smith 1939/1944 (the original papers) · Pozar ch. 5</p>
+</section>
+
+<!-- 2 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why a 1939 paper calculator still runs the industry</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:2.6vh"><em class="term">The entire passive universe fits in a disk.</em><br>
+      <span class="muted">Γ = (z−1)/(z+1) maps every impedance with R ≥ 0 into |Γ| ≤ 1. Nothing legal leaves.</span></li>
+    <li style="margin-bottom:2.6vh"><em class="term">Circuit moves are geometric moves.</em><br>
+      <span class="muted">A line rotates you; series elements ride one circle family, shunt elements another. Matching = two moves that end at the center.</span></li>
+    <li><em class="term">A perfect match is a resonance you built — billed in bandwidth.</em><br>
+      <span class="muted">Both designs today are exact at 2.4 GHz (|Γ| ≈ 10⁻¹⁶). The drama is 400 MHz away.</span></li>
+  </ol>
+  <p class="small muted" style="margin-top:2vh">Every VNA (vector network analyzer) still boots with Smith's picture on screen — not nostalgia: it is the coordinate system microwave design is legible in.</p>
+</section>
+
+<!-- 3 · the map -->
+<section class="slide">
+  <div class="kicker">1.2 The bilinear map</div>
+  <h2>One formula, five landmarks</h2>
+  <div class="math" style="font-size:4vh">Γ = (z − 1)/(z + 1) &nbsp;&nbsp;⇔&nbsp;&nbsp; z = (1 + Γ)/(1 − Γ) &nbsp;&nbsp; <span class="small muted">(z = Z/Z₀, normalized to the 50 Ω line)</span></div>
+  <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1.6vh; margin-top:1.6vh">
+    <div class="box" style="text-align:center"><p class="big">z = 0</p><p class="small muted">short → Γ = −1<br>(left edge)</p></div>
+    <div class="box" style="text-align:center"><p class="big">z → ∞</p><p class="small muted">open → Γ = +1<br>(right edge)</p></div>
+    <div class="box" style="text-align:center; background:#e8f0fe"><p class="big accent">z = 1</p><p class="small muted">matched → Γ = 0<br><em>the bullseye</em></p></div>
+    <div class="box" style="text-align:center"><p class="big">z = jx</p><p class="small muted">reactance → |Γ| = 1<br>(the rim: stores, never absorbs)</p></div>
+    <div class="box" style="text-align:center"><p class="big">0.72−j0.42</p><p class="small muted">our antenna →<br>0.285∠−110°</p></div>
+  </div>
+  <div class="box rule"><p>Passive means R ≥ 0 means <em class="term">|Γ| ≤ 1</em>. Impedance is unbounded; reflection is not —
+    Γ is the honest currency, which is why a VNA measures Γ and <em>computes</em> Z, never the reverse. Hour 3: 4000 random passive loads, max |Γ| = 0.999963.</p></div>
+</section>
+
+<!-- 4 · circles map to circles -->
+<section class="slide">
+  <div class="kicker">1.2 The bilinear map, first-principles pass</div>
+  <h2>Why circles map to circles</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>Γ(z) is a <em class="term">Möbius map</em>: translations + scalings + <em>one inversion</em> w → 1/w.</li>
+        <li>Write any circle as α(u²+v²) + βu + γv + δ = 0. Inversion swaps α ↔ δ — <em class="term">same form</em>. Lines are circles with α = 0 (through ∞).</li>
+        <li>So the impedance grid lands as two circle families:</li>
+      </ul>
+      <div class="box rule"><p class="small">const r: center (r/(1+r), 0), radius 1/(1+r)<br>
+      const x: center (1, 1/x), radius 1/|x|<br>
+      <span class="muted">all tangent at Γ = +1 — the image of infinity, where the far half-plane crowds together</span></p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 420 240" width="100%">
+        <g font-size="13" fill="#5b6472">
+          <line x1="70" y1="20" x2="70" y2="220" stroke="#1a1f2b" stroke-width="2"/>
+          <line x1="30" y1="120" x2="160" y2="120" stroke="#1a1f2b" stroke-width="2"/>
+          <line x1="100" y1="20" x2="100" y2="220" stroke="#9fb1c8" stroke-width="1.5"/>
+          <line x1="130" y1="20" x2="130" y2="220" stroke="#9fb1c8" stroke-width="1.5"/>
+          <line x1="70" y1="70" x2="160" y2="70" stroke="#c9a7a4" stroke-width="1.5"/>
+          <line x1="70" y1="170" x2="160" y2="170" stroke="#c9a7a4" stroke-width="1.5"/>
+          <text x="52" y="35">jX</text><text x="145" y="112">R</text>
+          <text x="30" y="236" font-size="12">the right half-plane (to ∞)</text>
+        </g>
+        <path d="M185 120 L225 120" stroke="#0f62fe" stroke-width="2.5" marker-end="none"/>
+        <path d="M218 113 L228 120 L218 127 Z" fill="#0f62fe"/>
+        <g>
+          <circle cx="330" cy="120" r="85" fill="none" stroke="#1a1f2b" stroke-width="2"/>
+          <circle cx="358" cy="120" r="57" fill="none" stroke="#9fb1c8" stroke-width="1.5"/>
+          <circle cx="373" cy="120" r="42" fill="none" stroke="#9fb1c8" stroke-width="1.5"/>
+          <circle cx="415" cy="35" r="85" fill="none" stroke="#c9a7a4" stroke-width="1.5" clip-path="url(#miniDisk)"/>
+          <circle cx="415" cy="205" r="85" fill="none" stroke="#c9a7a4" stroke-width="1.5" clip-path="url(#miniDisk)"/>
+          <clipPath id="miniDisk"><circle cx="330" cy="120" r="85"/></clipPath>
+          <circle cx="415" cy="120" r="3.5" fill="#1a1f2b"/>
+          <text x="248" y="236" font-size="12" fill="#5b6472">…the disk: all tangent at Γ = 1</text>
+        </g>
+      </svg>
+      <p class="small muted">Stare for sixty seconds and the chart stops being a mandala and becomes graph paper.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · the chart itself -->
+<section class="slide">
+  <div class="kicker">1.3 Reading the chart</div>
+  <h2>The chart — with our antenna on it</h2>
+  <div class="cols">
+    <div style="flex:1.35">
+      <svg viewBox="-235 -228 470 470" width="100%" style="max-height:66vh">
+        <!-- hand-drawn-style chart: paper + slightly loose ink -->
+        <rect x="-233" y="-226" width="466" height="466" rx="14" fill="#faf7ef"/>
+        <clipPath id="disk"><circle cx="0" cy="0" r="200"/></clipPath>
+        <g stroke="#4a4437" fill="none" stroke-linecap="round">
+          <circle cx="0" cy="0" r="200" stroke-width="3"/>
+          <line x1="-200" y1="0" x2="200" y2="0" stroke-width="1.8"/>
+          <!-- const-r circles: r = 0.2, 0.5, 1, 2, 5 -->
+          <g stroke-width="1.3" opacity="0.75">
+            <circle cx="33.3" cy="0" r="166.7"/>
+            <circle cx="66.7" cy="0" r="133.3"/>
+            <circle cx="100" cy="0" r="100" stroke-width="2.1" opacity="1"/>
+            <circle cx="133.3" cy="0" r="66.7"/>
+            <circle cx="166.7" cy="0" r="33.3"/>
+          </g>
+          <!-- const-x arcs: x = ±0.5, ±1, ±2 (clipped to the disk) -->
+          <g stroke-width="1.3" opacity="0.75" clip-path="url(#disk)">
+            <circle cx="200" cy="-400" r="400"/>
+            <circle cx="200" cy="-200" r="200"/>
+            <circle cx="200" cy="-100" r="100"/>
+            <circle cx="200" cy="400" r="400"/>
+            <circle cx="200" cy="200" r="200"/>
+            <circle cx="200" cy="100" r="100"/>
+          </g>
+        </g>
+        <!-- the antenna and its SWR circle -->
+        <circle cx="0" cy="0" r="57" fill="none" stroke="#b3261e" stroke-width="1.6" stroke-dasharray="7 5"/>
+        <circle cx="-19.5" cy="53.6" r="6" fill="#b3261e"/>
+        <circle cx="0" cy="0" r="3.5" fill="#4a4437"/>
+        <g font-family="'Segoe Print','Comic Sans MS',cursive" font-size="15" fill="#4a4437">
+          <text x="-133" y="-8" text-anchor="middle">0.2</text>
+          <text x="-67" y="-8" text-anchor="middle">0.5</text>
+          <text x="0" y="-8" text-anchor="middle">1</text>
+          <text x="67" y="-8" text-anchor="middle">2</text>
+          <text x="133" y="-8" text-anchor="middle">5</text>
+          <text x="-136" y="-172">+0.5j</text><text x="-16" y="-208">+1j</text><text x="124" y="-168">+2j</text>
+          <text x="-136" y="184">−0.5j</text><text x="-16" y="220">−1j</text><text x="124" y="180">−2j</text>
+          <text x="-228" y="-10" font-size="13">short</text>
+          <text x="203" y="-10" font-size="13">open</text>
+          <text x="8" y="-14" font-size="13">match</text>
+        </g>
+        <g font-family="'Segoe Print','Comic Sans MS',cursive" font-size="16">
+          <text x="-12" y="80" fill="#b3261e">z_L = 0.72 − j0.42</text>
+          <text x="30" y="120" fill="#b3261e" font-size="13">SWR circle, |Γ| = 0.285</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <p>Plot Z<sub>L</sub> = 36 − j21 Ω (homework 2's patient) in four moves:</p>
+      <ol class="small" style="font-size:2.4vh">
+        <li>normalize: z<sub>L</sub> = 0.72 − j0.42</li>
+        <li>find the r = 0.72 circle</li>
+        <li>find the x = −0.42 arc (lower half = capacitive)</li>
+        <li>the intersection is the point — no algebra</li>
+      </ol>
+      <div class="box rule"><p class="small">The <em class="term">SWR circle</em> (SWR = standing wave ratio):
+        center through z<sub>L</sub>. Everything a lossless line can do to this load lives on it.
+        The circle is the budget; matching is the escape.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · translations + war story -->
+<section class="slide">
+  <div class="kicker">1.3 Reading the chart</div>
+  <h2>Distance from center is everything you measured last week</h2>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.6vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big accent">0.285</p><p class="small muted">|Γ| — radius on the chart</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">1.80</p><p class="small muted">SWR = (1+|Γ|)/(1−|Γ|)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">10.9 dB</p><p class="small muted">return loss = −20·log₁₀|Γ|</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">91.9%</p><p class="small muted">delivered = 1 − |Γ|²</p></div>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">The radial scales under a paper chart do these conversions with a ruler — arctangents for free was the chart's original job. These four must become reflexes by lecture 6.</p>
+  <div class="box trap">
+    <p class="small"><em class="term">War story:</em> an antenna measured <em>through 30 cm of test cable</em>, matched beautifully — for the impedance at the far end of a cable that didn't ship. The cable had rotated the point around the SWR circle: right circle, wrong angle.
+    Reference planes are formalized in L4 (de-embedding); today's version: <em class="term">know which plane your point lives at before you move a millimeter.</em></p>
+  </div>
+</section>
+
+<!-- 7 · rotation -->
+<section class="slide">
+  <div class="kicker">1.4 Motion</div>
+  <h2>A length of line rotates you — clockwise, 2βℓ, λ/2 per lap</h2>
+  <div class="cols">
+    <div>
+      <div class="math">Γ<sub>in</sub>(ℓ) = Γ<sub>L</sub> e<sup>−j2βℓ</sup> <span class="small muted">(β = 2π/λ; ℓ toward the generator)</span></div>
+      <ul class="small" style="font-size:2.4vh">
+        <li>ℓ = λ/8 (90° on the chart): Z<sub>in</sub> = 28.4 + j6.0 Ω</li>
+        <li>ℓ = λ/4 (180°): <em class="term">point inversion</em> → Z<sub>in</sub> = 51.8 + j30.2 = Z₀²/Z<sub>L</sub> — lecture 2's inverter, proved in one sentence</li>
+        <li>real-axis crossings: 27.8 Ω = Z₀/SWR at 0.097λ (v-min) · 89.9 Ω = Z₀·SWR at 0.347λ (v-max)</li>
+      </ul>
+      <div class="box trap"><p class="small">Why <em class="term">clockwise</em>: the reflected wave has farther to travel back —
+        e<sup>−j2βℓ</sup>, phase <em>decreases</em> toward the generator. The 2× and the direction are the two things everyone gets wrong once.</p></div>
+    </div>
+    <div>
+      <svg viewBox="-120 -120 240 240" width="88%">
+        <circle cx="0" cy="0" r="100" fill="none" stroke="#c9c2b2" stroke-width="1.5"/>
+        <line x1="-100" y1="0" x2="100" y2="0" stroke="#c9c2b2" stroke-width="1"/>
+        <circle cx="0" cy="0" r="57" fill="none" stroke="#0f62fe" stroke-width="2"/>
+        <path d="M -45 -20 A 49 49 0 0 1 -20 -45" fill="none" stroke="#0f62fe" stroke-width="1.6"/>
+        <path d="M -24 -49 L -16 -44 L -25 -39 Z" fill="#0f62fe"/>
+        <circle cx="-19.5" cy="53.6" r="5" fill="#1a1f2b"/>
+        <circle cx="-53.6" cy="-19.5" r="4" fill="#b3261e"/>
+        <circle cx="19.5" cy="-53.6" r="4" fill="#b3261e"/>
+        <circle cx="-57" cy="0" r="4" fill="#b3261e"/>
+        <circle cx="57" cy="0" r="4" fill="#b3261e"/>
+        <g font-size="11" fill="#1a1f2b">
+          <text x="-14" y="70">z_L (ℓ=0)</text>
+          <text x="-108" y="-24">λ/8</text>
+          <text x="26" y="-58">λ/4</text>
+          <text x="-96" y="14">v-min</text>
+          <text x="62" y="14">v-max</text>
+          <text x="-46" y="102" fill="#5b6472">toward generator ⟳</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · admittance + instruction set -->
+<section class="slide">
+  <div class="kicker">1.4 The admittance chart</div>
+  <h2>y lives diametrically opposite z — and the three-move instruction set</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>Shunt elements add <em class="term">admittance</em>: y = 1/z. Inverting = rotating 180° → y's point is z's point <em class="term">reflected through the center</em> (the λ/4 fact, frequency-free).</li>
+        <li>Our antenna: y<sub>L</sub> = 1.036 + j0.605.</li>
+      </ul>
+      <div class="box trap"><p class="small"><em class="term">Sign discipline:</em> a capacitive load has <em>negative</em> reactance but
+        <em>positive</em> susceptance — +j means capacitive in admittance country. Hour 3's deliberate bug violates exactly this currency rule.</p></div>
+    </div>
+    <div>
+      <div class="box rule">
+        <p><em class="term">The complete instruction set:</em></p>
+        <p class="small" style="margin-top:1vh">
+        <span class="accent">line</span> → rotate on the SWR circle (free)<br>
+        <span class="accent">series L/C</span> → slide along a constant-r circle<br>
+        <span class="accent">shunt L/C</span> → slide along a constant-g circle</p>
+      </div>
+      <p class="muted" style="margin-top:2vh">Matching is a two-instruction program written in these moves. Hour 2 writes it twice.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · misconception -->
+<section class="slide">
+  <div class="kicker">1.4 The obligatory objection</div>
+  <h2>"Isn't the chart obsolete? Software does this."</h2>
+  <div class="box rule">
+    <p>Backwards. Software <em class="term">plots on</em> the chart. The chart is the <em class="term">coordinate system</em>, not the calculator.</p>
+  </div>
+  <ul style="margin-top:2vh">
+    <li>Every VNA screen, every antenna datasheet, every matching discussion at a whiteboard — happens on this disk.</li>
+    <li>Lecture 11: amplifier <em class="term">stability circles, noise circles, gain circles</em> — all drawn here; you will pick a design point by reading them.</li>
+    <li>The engineer who can't read the chart is the one the software is obsoleting.</li>
+  </ul>
+  <p class="small muted" style="margin-top:2vh">Smith drew it in 1939 because he was tired of hand-computing complex arctangents [R19]. The reason it survived: reflection, unlike impedance, is bounded — the disk is the honest currency.</p>
+</section>
+
+<!-- 10 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>The chart is the bilinear image of every passive impedance — circles to circles, rim is reactance, center is home.</li>
+    <li>Lines rotate you <em class="term">clockwise toward the generator</em> at 2βℓ; λ/4 is inversion — which is also why admittance lives diametrically opposite.</li>
+    <li>Series rides r-circles, shunt rides g-circles: <em class="term">three moves</em>, the whole instruction set.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2 uses exactly these moves to put the antenna in the center of the disk — twice.</p>
+</section>
+
+<!-- 11 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Matching, Two Ways</h1>
+  <p class="muted" style="margin-top:3vh">Why match · the two-move principle · the L-section from chart geometry · single-stub tuning · the price, paid in bandwidth</p>
+</section>
+
+<!-- 12 · what matching buys -->
+<section class="slide">
+  <div class="kicker">2.1 Why match</div>
+  <h2>Honestly: 0.37 dB — and everything that matters more</h2>
+  <div class="cols">
+    <div>
+      <p>Unmatched, the antenna already delivers <em class="term">91.9%</em> (−0.37 dB mismatch loss). The real purchases:</p>
+      <ul class="small" style="font-size:2.4vh">
+        <li><em class="term">SWR 1.80 → 1.00</em>: the feed line stops carrying standing waves (homework 2 showed what those cost over 10 m).</li>
+        <li>The transmitter sees <em class="term">50 Ω resistive</em>, not a load that wanders with every cm of cable (L11: amplifier gain, noise, stability all depend on what they see).</li>
+        <li>Downstream parts get the impedance they were <em>characterized</em> at.</li>
+      </ul>
+      <p class="small muted">Matching is less about power than about making the system <em class="term">composable</em>.</p>
+    </div>
+    <div>
+      <div class="box trap"><p class="small"><em class="term">One honest distinction:</em> today we match the load <em>to the line</em>
+        (drive Γ = 0). Conjugate-matching a <em>source</em> for maximum power (Z<sub>s</sub>*) is a different problem —
+        they coincide while sources are 50 Ω resistive, the standing assumption until L11 reopens it for amplifiers.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 · two-move principle -->
+<section class="slide">
+  <div class="kicker">2.1 The two-move principle</div>
+  <h2>Last move picks the rail; first move gets you to the rail</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>Target: the center, y = 1 + j0.</li>
+        <li>A final <em class="term">shunt</em> element only changes b → it must start on the <em class="term">g = 1 circle</em>.</li>
+        <li>A final <em class="term">series</em> element only changes x → its rail is the <em class="term">r = 1 circle</em>.</li>
+        <li>Every topology in this course — today's L-section and stub, L6's multisections — is a path built <em>backwards from the center</em> along legal rails.</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="-120 -120 240 240" width="88%">
+        <circle cx="0" cy="0" r="100" fill="none" stroke="#c9c2b2" stroke-width="1.5"/>
+        <line x1="-100" y1="0" x2="100" y2="0" stroke="#c9c2b2" stroke-width="1"/>
+        <circle cx="-50" cy="0" r="50" fill="none" stroke="#2e7d32" stroke-width="2.4"/>
+        <circle cx="50" cy="0" r="50" fill="none" stroke="#0f62fe" stroke-width="2.4"/>
+        <circle cx="0" cy="0" r="4" fill="#1a1f2b"/>
+        <g font-size="11">
+          <text x="-92" y="-58" fill="#2e7d32">g = 1 (shunt finisher)</text>
+          <text x="18" y="-58" fill="#0f62fe">r = 1 (series finisher)</text>
+          <text x="6" y="16" fill="#1a1f2b">home</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · L-section topologies -->
+<section class="slide">
+  <div class="kicker">2.2 The L-section</div>
+  <h2>Two components, one order question — the chart answers it</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 400 260" width="100%">
+        <g stroke="#1a1f2b" stroke-width="2" fill="none" font-size="12">
+          <line x1="10" y1="40" x2="90" y2="40"/><rect x="90" y="30" width="44" height="20" fill="#eef2f7" stroke="#1a1f2b"/><line x1="134" y1="40" x2="185" y2="40"/>
+          <line x1="160" y1="40" x2="160" y2="66"/><rect x="150" y="66" width="20" height="30" fill="#eef2f7"/><line x1="160" y1="96" x2="160" y2="108"/><line x1="150" y1="108" x2="170" y2="108"/>
+          <rect x="185" y="28" width="26" height="24" fill="#dbe8ff" stroke="#0f62fe"/>
+          <text x="35" y="30" stroke="none" fill="#1a1f2b">series X</text>
+          <text x="120" y="90" stroke="none" fill="#1a1f2b">shunt B</text>
+          <text x="182" y="70" stroke="none" fill="#0f62fe">Z_L</text>
+          <text x="10" y="130" stroke="none" fill="#5b6472" font-size="13">shunt-first (at the load): R_L &gt; Z₀ — load inside the 1+jx circle</text>
+        </g>
+        <g transform="translate(0,60)" stroke="#1a1f2b" stroke-width="2" fill="none" font-size="12">
+          <line x1="10" y1="100" x2="60" y2="100"/>
+          <line x1="60" y1="100" x2="60" y2="126"/><rect x="50" y="126" width="20" height="30" fill="#eef2f7"/><line x1="60" y1="156" x2="60" y2="146"/>
+          <line x1="60" y1="100" x2="100" y2="100"/><rect x="100" y="90" width="44" height="20" fill="#eef2f7" stroke="#1a1f2b"/><line x1="144" y1="100" x2="185" y2="100"/>
+          <rect x="185" y="88" width="26" height="24" fill="#dbe8ff" stroke="#0f62fe"/>
+          <text x="112" y="82" stroke="none" fill="#1a1f2b">series X</text>
+          <text x="18" y="150" stroke="none" fill="#1a1f2b">shunt B</text>
+          <text x="182" y="130" stroke="none" fill="#0f62fe">Z_L</text>
+          <text x="10" y="190" stroke="none" fill="#5b6472" font-size="13">series-first (at the load): R_L &lt; Z₀ — our antenna's region</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <div class="box rule"><p><em class="term">Region rule:</em> the topology whose first move can reach its rail.
+        R<sub>L</sub> &lt; Z₀ → series-first (reach g = 1). R<sub>L</sub> &gt; Z₀ → shunt-first (reach r = 1).
+        The other one's square root goes negative — algebra saying <em>"you can't get there on that rail."</em></p></div>
+      <p class="small muted" style="margin-top:2vh">The homework designer must <em>discover</em> the region — the checker feeds it 120 + j90 Ω to make sure.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · L-section closed forms -->
+<section class="slide">
+  <div class="kicker">2.2 The L-section</div>
+  <h2>The closed form is chart geometry (derived twice)</h2>
+  <p class="small muted">Demand the series move lands on g = 1: Re{1/z} = 1 ⇒ r<sub>L</sub>² + (x<sub>L</sub>+x)² = r<sub>L</sub> — that IS the g = 1 circle. Un-normalized (Pozar 5.1):</p>
+  <div class="math">X = ± √(R<sub>L</sub>(Z₀ − R<sub>L</sub>)) − X<sub>L</sub> &nbsp;&nbsp;·&nbsp;&nbsp; B = ± √((Z₀ − R<sub>L</sub>)/R<sub>L</sub>) / Z₀</div>
+  <table style="font-size:2.5vh; border-collapse:collapse; margin-top:1vh">
+    <tr class="muted small"><td style="padding:.4vh 1.6vh"></td><td style="padding:.4vh 1.6vh">series X</td><td style="padding:.4vh 1.6vh">component</td><td style="padding:.4vh 1.6vh">shunt B</td><td style="padding:.4vh 1.6vh">component</td><td style="padding:.4vh 1.6vh">intermediate</td></tr>
+    <tr><td style="padding:.4vh 1.6vh"><em class="term">sol 1</em></td><td style="padding:.4vh 1.6vh">+43.45 Ω</td><td style="padding:.4vh 1.6vh"><em class="term">L = 2.881 nH</em></td><td style="padding:.4vh 1.6vh">+12.47 mS</td><td style="padding:.4vh 1.6vh"><em class="term">C = 0.827 pF</em></td><td style="padding:.4vh 1.6vh">y = 1 − j0.624</td></tr>
+    <tr><td style="padding:.4vh 1.6vh"><em class="term">sol 2</em></td><td style="padding:.4vh 1.6vh">−1.45 Ω</td><td style="padding:.4vh 1.6vh">C = 45.74 pF</td><td style="padding:.4vh 1.6vh">−12.47 mS</td><td style="padding:.4vh 1.6vh">L = 5.317 nH</td><td style="padding:.4vh 1.6vh">y = 1 + j0.624</td></tr>
+  </table>
+  <div class="box rule"><p class="small">Both intermediate points sit on the rail to nine digits (the checker prints Re(y) = 1.000000000) —
+    the algebra <em class="term">is</em> the geometry. Hour 3's skrf cascade: |Γ(f₀)| = 2.7 × 10⁻¹⁶, matched <em class="term">by construction</em>.</p></div>
+</section>
+
+<!-- 16 · Q and where L-sections live -->
+<section class="slide">
+  <div class="kicker">2.2 The L-section</div>
+  <h2>One number predicts the whole band: Q</h2>
+  <div class="cols">
+    <div>
+      <div class="math">Q = √(Z₀/R<sub>L</sub> − 1) = √(50/36 − 1) = <span class="accent">0.62</span></div>
+      <ul class="small" style="font-size:2.4vh">
+        <li>A lazy, forgiving resonance — because 36 Ω is not far from 50.</li>
+        <li>Matching 5 Ω would cost Q = 3 and the band would show it.</li>
+        <li>Hour 3 measures what Q = 0.62 buys: worst in-band RL (return loss) 20.16 dB over 2.0–2.8 GHz.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="box"><p class="small"><em class="term">Where L-sections live:</em> lumped L and C with usable self-resonance
+        run out around 2–6 GHz (depending on parasitic honesty) — your sub-6 GHz phone is full of them;
+        the 10 GHz radar bench is not. Above that, copper geometry <em>is</em> the component → next section.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · stub topology -->
+<section class="slide">
+  <div class="kicker">2.3 Single-stub matching</div>
+  <h2>No components: a line length d, a shunt stub ℓ</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 400 190" width="100%">
+        <g stroke="#1a1f2b" stroke-width="2.5" fill="none">
+          <line x1="10" y1="110" x2="330" y2="110"/>
+          <line x1="10" y1="126" x2="330" y2="126"/>
+          <rect x="330" y="98" width="30" height="40" fill="#dbe8ff" stroke="#0f62fe" stroke-width="2"/>
+          <line x1="150" y1="110" x2="150" y2="30"/>
+          <line x1="166" y1="110" x2="166" y2="30"/>
+        </g>
+        <g font-size="13" fill="#1a1f2b">
+          <text x="337" y="90" fill="#0f62fe">Z_L</text>
+          <text x="230" y="95">d (rotate)</text>
+          <text x="175" y="55">ℓ — open stub</text>
+          <text x="175" y="72" fill="#5b6472" font-size="12">input = pure susceptance</text>
+          <text x="18" y="95" fill="#5b6472">to generator</text>
+          <text x="140" y="22" fill="#5b6472" font-size="12">(open end)</text>
+        </g>
+      </svg>
+      <p class="small muted">Two lengths of 50 Ω copper, printed free on any PCB (printed circuit board). This is <em>the</em> microwave match.</p>
+    </div>
+    <div>
+      <div class="box rule">
+        <p class="small"><em class="term">The same two-move program, in admittance</em> (the last element is shunt!):</p>
+        <ol class="small" style="font-size:2.2vh; margin-top:1vh">
+          <li>rotate y along the SWR circle until it crosses the <em class="term">g = 1 circle</em> (it must — twice per half-lap)</li>
+          <li>read the leftover b; cut the stub to add −b</li>
+          <li>arrive at y = 1. Done.</li>
+        </ol>
+      </div>
+      <p class="small muted" style="margin-top:1.5vh">Open stub on PCB (a short needs a via — L5's parasitics); short stub in coax/waveguide.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · stub closed forms -->
+<section class="slide">
+  <div class="kicker">2.3 Single-stub matching</div>
+  <h2>The analytic version — and our antenna's two solutions</h2>
+  <div class="math" style="font-size:2.9vh">t = tan βd = [X<sub>L</sub> ± √(R<sub>L</sub>((Z₀−R<sub>L</sub>)² + X<sub>L</sub>²)/Z₀)] / (R<sub>L</sub> − Z₀)
+  <span class="small muted">then d = arctan(t)/2π (+λ/2 if negative); open stub ℓ = −arctan(BZ₀)/2π</span></div>
+  <table style="font-size:2.5vh; border-collapse:collapse; margin-top:1vh">
+    <tr class="muted small"><td style="padding:.4vh 1.6vh"></td><td style="padding:.4vh 1.6vh">d</td><td style="padding:.4vh 1.6vh">lands at</td><td style="padding:.4vh 1.6vh">open stub ℓ</td><td style="padding:.4vh 1.6vh">total copper</td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.4vh 1.6vh"><em class="term">sol 2 — take this one</em></td><td style="padding:.4vh 1.6vh">0.1993 λ = 24.9 mm</td><td style="padding:.4vh 1.6vh">y = 1 − j0.595</td><td style="padding:.4vh 1.6vh">0.0854 λ = 10.7 mm</td><td style="padding:.4vh 1.6vh"><em class="term">0.28 λ</em></td></tr>
+    <tr><td style="padding:.4vh 1.6vh">sol 1</td><td style="padding:.4vh 1.6vh">0.4953 λ = 61.9 mm</td><td style="padding:.4vh 1.6vh">y = 1 + j0.595</td><td style="padding:.4vh 1.6vh">0.4146 λ = 51.8 mm</td><td style="padding:.4vh 1.6vh">0.91 λ</td></tr>
+  </table>
+  <div class="box rule"><p class="small">Both are <em>exact</em> at f₀ — hour 3's referee prints 1.8 × 10⁻¹⁶ for each. They are
+    <em class="term">not the same product</em>: the homework measures why, and "take the short one" stops being folklore and becomes a number.</p></div>
+</section>
+
+<!-- 19 · trajectories on the chart -->
+<section class="slide">
+  <div class="kicker">2.3 On the chart</div>
+  <h2>Both designs, drawn — every path ends on a rail, then rides it home</h2>
+  <div class="cols">
+    <div style="flex:1.3">
+      <svg viewBox="-235 -160 470 320" width="100%" style="max-height:58vh">
+        <rect x="-233" y="-158" width="466" height="316" rx="14" fill="#faf7ef"/>
+        <g stroke="#c9c2b2" fill="none">
+          <circle cx="0" cy="0" r="140" stroke-width="2" transform="scale(1)" opacity="0"/>
+        </g>
+        <g transform="scale(0.7)">
+          <circle cx="0" cy="0" r="200" fill="none" stroke="#4a4437" stroke-width="3"/>
+          <line x1="-200" y1="0" x2="200" y2="0" stroke="#c9c2b2" stroke-width="1.5"/>
+          <circle cx="-100" cy="0" r="100" fill="none" stroke="#2e7d32" stroke-width="2"/>
+          <circle cx="100" cy="0" r="100" fill="none" stroke="#c9c2b2" stroke-width="1.5"/>
+          <circle cx="0" cy="0" r="57" fill="none" stroke="#c9c2b2" stroke-width="1.2" stroke-dasharray="6 5"/>
+          <!-- L-section sol 1: series arc (const r = 0.72), then g=1 slide -->
+          <path d="M -19.5 53.6 A 116.3 116.3 0 0 1 -17.7 -56.8" fill="none" stroke="#0f62fe" stroke-width="3.5"/>
+          <path d="M -17.7 -56.8 A 100 100 0 0 1 0 0" fill="none" stroke="#7bb0ff" stroke-width="3.5"/>
+          <!-- stub sol 2: rotation (rides the SWR circle), then g=1 slide -->
+          <path d="M -19.5 53.6 A 57 57 0 0 1 -16.3 -54.7" fill="none" stroke="#b3261e" stroke-width="4" stroke-dasharray="9 4"/>
+          <path d="M -16.3 -54.7 A 100 100 0 0 1 0 0" fill="none" stroke="#ff9d9d" stroke-width="2.6"/>
+          <circle cx="-19.5" cy="53.6" r="6.5" fill="#1a1f2b"/>
+          <circle cx="-17.7" cy="-56.8" r="6" fill="#0f62fe"/>
+          <circle cx="-16.3" cy="-54.7" r="6" fill="#b3261e"/>
+          <circle cx="0" cy="0" r="5" fill="#1a1f2b"/>
+        </g>
+        <g font-family="'Segoe Print','Comic Sans MS',cursive" font-size="13" fill="#1a1f2b">
+          <text x="4" y="52">z_L</text>
+          <text x="-145" y="-52" fill="#4a4437">both land on g = 1 →</text>
+          <text x="-96" y="30" fill="#2e7d32">g = 1</text>
+          <text x="8" y="-10">home</text>
+          <text x="66" y="30" fill="#8a8474" font-size="12">r = 1</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <ul class="small" style="font-size:2.35vh">
+        <li><span style="color:#0f62fe">■</span> L-section: series arc (constant r = 0.72) to g = 1, shunt slide home.</li>
+        <li><span style="color:#b3261e">■</span> stub sol 2: rotate 0.199 λ on the SWR circle to g = 1, stub slides home.</li>
+        <li>The two intermediate points nearly coincide for this load (b = 0.62 vs 0.59) — a coincidence of this antenna, not a law.</li>
+      </ul>
+      <div class="box rule"><p class="small">The homework's <code>--smith</code> draws <em>your</em> version of this picture — the TA reads
+        whether your trajectories pass through the intermediate points.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 20 · quarter-wave + forbidden regions -->
+<section class="slide">
+  <div class="kicker">2.4 Loose ends the chart ties</div>
+  <h2>λ/4 rejoined · forbidden regions</h2>
+  <div class="cols">
+    <div>
+      <div class="box rule"><p class="small"><em class="term">λ/4 revisited:</em> Z₀' = √(Z₀R) needs a <em>real</em> R — a point on the axis.
+        But every SWR circle crosses the axis twice per lap (ours: 27.8 Ω at 0.097 λ, 89.9 Ω at 0.347 λ).
+        <em class="term">Pre-rotate, then transform</em> — line + λ/4 is a two-move program too. Homework 2 built it; now the geometry is yours.</p></div>
+    </div>
+    <div>
+      <div class="box trap"><p class="small"><em class="term">Forbidden regions:</em> a series-first L-section leaves the load along its
+        constant-r circle — if that circle never meets g = 1 (exactly when R<sub>L</sub> &gt; Z₀), the topology is dead for that load.
+        Same argument kills shunt-first for R<sub>L</sub> &lt; Z₀, and maps the reach of any fixed tuner.
+        L11 uses this to pick networks that can reach a transistor's awkward Γ<sub>opt</sub>.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 21 · the price -->
+<section class="slide">
+  <div class="kicker">2.4 The price</div>
+  <h2>Every exact match is a resonance — Q counts the stored energy</h2>
+  <div class="cols">
+    <div>
+      <ul class="small" style="font-size:2.4vh">
+        <li>L-section: two small elements, Q = 0.62.</li>
+        <li>Stub designs: energy stored in <em class="term">line length</em> — electrical angle 2πd·f/f₀ drifts in proportion to d. Sol 1's 0.91 λ unwinds ~3× faster than sol 2's 0.28 λ.</li>
+        <li>Predicted worst-in-band RL ranking (hour 3 measures): <em class="term">L-section &gt; stub 2 &gt; stub 1</em> — and stub 1 goes <em class="term">worse than the bare antenna</em> at the band edges.</li>
+      </ul>
+      <div class="box rule"><p class="small">Bode–Fano (L6), spoken casually: match depth × bandwidth is a budget set by the load's own Q.
+        Networks don't win it; they spend it.</p></div>
+    </div>
+    <div>
+      <div class="box trap"><p class="small"><em class="term">War story:</em> an IoT (Internet of Things) product's antenna matched to 28 dB dead-center of channel 7 —
+        failed regulatory on channels 1 and 13. The fix that shipped: a <em>worse</em> center match (14 dB) holding 12 dB across the whole band.
+        The golden sample was a resonance; the product was a bandwidth. The homework makes you do this trade with numbers.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 22 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in three sentences</h2>
+  <ul class="big">
+    <li><em class="term">Last move picks the rail</em> (shunt → g = 1, series → r = 1); first move gets you there.</li>
+    <li>L-section: closed-form chart geometry — <em class="term">2.88 nH + 0.83 pF</em>, region rule included. Stub: rotate-and-cancel in admittance — <em class="term">24.9 mm + 10.7 mm</em> of bare copper, two unequal twins.</li>
+    <li>Every exact match is a resonance <em class="term">billing you in bandwidth</em>.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 builds all of it in scikit-rf — then commits hour 2's one deadly sin on purpose.</p>
+</section>
+
+<!-- 23 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in scikit-rf — every claim becomes a printed number</h2>
+  <ul>
+    <li>The map as one lambda; 4000 random loads — the disk holds (0.999963)</li>
+    <li>Rotation watched: |Γ| = 0.285098 at λ/8, λ/4, 3λ/8 — <em class="term">constant, printed</em></li>
+    <li>Both matches built and refereed by cascade: <em class="term">|Γ(f₀)| ≈ 10⁻¹⁶, matched by construction</em></li>
+    <li>The band sweep: worst in-band RL 20.16 / 15.34 / <span class="warn">4.21</span> dB — stored energy calls the order</li>
+    <li>The deliberate bug — matching the <em class="term">impedance</em> instead of the <em class="term">admittance</em>: |Γ| = 0.53, <em>worse than no match at all</em>, diametrically wrong on the chart</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> — Q1 (which product survives the band: count stored-energy elements) and Q2 (the stub twins' bandwidth factor) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 3 · The Smith Chart &amp; Impedance Matching · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>
