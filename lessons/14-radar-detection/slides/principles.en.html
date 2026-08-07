@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 14 · Principles — The Radar Equation &amp; Detection</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 14 · Hours 1–2</div>
+  <h1>The Radar Equation &amp; Detection</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: Monte Carlo detection + CA-CFAR (cell-averaging, constant false-alarm rate) in NumPy, live → homework: see it through the noise</p>
+  <p class="small muted" style="margin-top:6vh">Reading: MIT LL <em>Introduction to Radar Systems</em> lectures 2 &amp; 6 (free) · Richards chs. 6–7 (reference) · Balanis RCS chapter (stealth)</p>
+</section>
+
+<!-- 2 · convergence -->
+<section class="slide">
+  <div class="kicker">1.1 The course converges</div>
+  <h2>Every factor now has a home lecture</h2>
+  <div class="math" style="font-size:4vh">
+    SNR = P<sub>t</sub> G² λ² σ / ( (4π)³ R⁴ · kT₀B·F · L )
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1.4vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big">P<sub>t</sub></p><p class="small muted">delivered, not reflected — lines &amp; matching <span class="accent">L2·L3·L6</span></p></div>
+    <div class="box" style="text-align:center"><p class="big">G²</p><p class="small muted">the aperture, counted twice <span class="accent">L13</span></p></div>
+    <div class="box" style="text-align:center"><p class="big">B</p><p class="small muted">a filter you can synthesize <span class="accent">L8–9</span></p></div>
+    <div class="box" style="text-align:center"><p class="big">F</p><p class="small muted">noise figure; the LNA (low-noise amplifier) rules it <span class="accent">L10–11</span></p></div>
+    <div class="box" style="text-align:center"><p class="big">L</p><p class="small muted">plumbing losses <span class="accent">L5·L7</span></p></div>
+    <div class="box" style="text-align:center"><p class="big">mixer</p><p class="small muted">the echo comes down to decide <span class="accent">L12</span></p></div>
+    <div class="box" style="text-align:center"><p class="big">σ, R⁴</p><p class="small muted">the target &amp; the toll — <span class="accent">L1</span>, honest today</p></div>
+    <div class="box" style="text-align:center; background:#fdecea"><p class="big warn">SNR<sub>min</sub> = 13 dB</p><p class="small muted">the one number never earned — until today</p></div>
+  </div>
+  <p class="small muted" style="margin-top:2vh">SNR = signal-to-noise ratio, per pulse, at the detector. In lecture 1 this equation was a postcard from a foreign country. You have now lived in every term.</p>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why this lecture exists</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">Detection is a decision under uncertainty.</em><br>
+      <span class="muted">P<sub>d</sub> (detection probability) and P<sub>fa</sub> (false-alarm probability) replace the 13 dB hand-wave — which turns out to have been nearly honest.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">The false-alarm mathematics is exact — invertible by hand.</em><br>
+      <span class="muted">One Rayleigh closed form sets every threshold. One factor-of-2 slip in its exponent turns 10⁻⁶ into 10⁻³. Hour 3 commits it on purpose.</span></li>
+    <li><em class="term">A fixed threshold dies when it leaves the lab.</em><br>
+      <span class="muted">CFAR (constant false-alarm rate) — estimate the noise where the target isn't — and its measurable tax and blind spots.</span></li>
+  </ol>
+</section>
+
+<!-- 4 · what sigma is -->
+<section class="slide">
+  <div class="kicker">1.2 Radar cross section</div>
+  <h2>σ is how a target scatters — the honest version</h2>
+  <div class="box rule">
+    <p>σ (RCS, radar cross section) is <em class="term">defined</em> through the equation: the area that,
+    re-radiating the intercepted power isotropically, explains the echo you receive. Units m²;
+    in dB: dBsm (dB re 1 m²).</p>
+  </div>
+  <ul style="margin-top:2vh">
+    <li>Not a silhouette: a flat plate face-on returns <span class="math inline">4πA²/λ²</span> —
+      a 30 × 30 cm plate at X-band is <em class="term">~110 m²</em>, bigger than the airliner's whole-body number.</li>
+    <li>Tilt the same plate 30° and the flash goes somewhere you aren't. σ is a
+      <em class="term">phasor sum of scattering centers</em> — inlets, junctions, tail flats.</li>
+    <li>Consequence: σ swings 20–30 dB with <em class="term">aspect</em> and re-phases with
+      <em class="term">frequency</em>. Lecture 1's "σ ≈ 40 m²" — the ≈ was hiding a dance.</li>
+  </ul>
+</section>
+
+<!-- 5 · dBsm ladder -->
+<section class="slide">
+  <div class="kicker">1.2 Radar cross section</div>
+  <h2>The dBsm ladder — who reflects what</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 380 300" width="100%">
+        <line x1="60" y1="20" x2="60" y2="285" stroke="#1a1f2b" stroke-width="3"/>
+        <g font-size="14" fill="#1a1f2b">
+          <line x1="52" y1="270" x2="68" y2="270" stroke="#1a1f2b" stroke-width="2"/>
+          <text x="8" y="275">−40</text><text x="80" y="275">insect</text>
+          <line x1="52" y1="235" x2="68" y2="235" stroke="#1a1f2b" stroke-width="2"/>
+          <text x="8" y="240">−30</text><text x="80" y="240">small bird</text>
+          <line x1="52" y1="200" x2="68" y2="200" stroke="#b3261e" stroke-width="3"/>
+          <text x="8" y="205" fill="#b3261e">−20</text><text x="80" y="205" fill="#b3261e" font-weight="700">drone = large bird</text>
+          <line x1="52" y1="165" x2="68" y2="165" stroke="#1a1f2b" stroke-width="2"/>
+          <text x="16" y="170">0</text><text x="80" y="170">human · fighter (nose-on)</text>
+          <line x1="52" y1="130" x2="68" y2="130" stroke="#1a1f2b" stroke-width="2"/>
+          <text x="8" y="135">+10</text><text x="80" y="135">car</text>
+          <line x1="52" y1="109" x2="68" y2="109" stroke="#0f62fe" stroke-width="3"/>
+          <text x="8" y="114" fill="#0f62fe">+16</text><text x="80" y="114" fill="#0f62fe" font-weight="700">airliner (40 m², class number)</text>
+          <line x1="52" y1="60" x2="68" y2="60" stroke="#1a1f2b" stroke-width="2"/>
+          <text x="8" y="65">+30</text><text x="80" y="65">broadside airframe · ship</text>
+        </g>
+        <text x="20" y="35" font-size="13" fill="#5b6472">dBsm = 10·log₁₀(σ / 1 m²)</text>
+      </svg>
+    </div>
+    <div>
+      <div class="box trap"><p><em class="term">The drone problem, again:</em> drone and large bird share
+        a rung. Lecture 15's micro-Doppler separates them; today we fight to see the rung at all.</p></div>
+      <div class="box"><p class="small">X-band weather radars routinely image insect swarms — −40 dBsm,
+        in numbers. Everything reflects; the question is always <em>relative to what</em> (wait for the
+        clutter slide).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · stealth -->
+<section class="slide">
+  <div class="kicker">1.2 Radar cross section</div>
+  <h2>Stealth has exactly two levers <span class="muted small">(Balanis, RCS-reduction chapter [R10])</span></h2>
+  <div class="cols">
+    <div>
+      <div class="box rule"><p><em class="term">Shaping</em> — redirect, don't absorb. Kill the
+        corner-like retroreflectors; facet or blend so the specular flash misses the monostatic
+        receiver. <span class="muted small">Why stealth jets look the way they do — and why bistatic
+        radar is the counter-argument.</span></p></div>
+      <div class="box rule"><p><em class="term">Absorption</em> — RAM (radar-absorbing material) turns
+        induced currents into heat. Effective, narrowband-ish, heavy, maintenance-hungry.</p></div>
+    </div>
+    <div>
+      <div class="box trap">
+        <p>Both levers buy <em class="term">dB of σ</em> — and the fourth root pays them back at
+        <em class="term">25 cents on the dollar</em>:</p>
+        <p class="math" style="margin:1.5vh 0">−30 dB of σ → range ÷ 10<sup>30/40</sup> ≈ <span class="warn">5.6×</span></p>
+        <p class="small muted">A serious program removes 99.9% of the echo to cut detection range by ~6×.
+        Worthwhile — the fights it changes are real — but not magic. (Lecture 1 said it; now you know
+        what the 30 dB costs to obtain.)</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · the decision -->
+<section class="slide">
+  <div class="kicker">1.3 Detection as hypothesis testing</div>
+  <h2>Two densities, one threshold, two ways to be wrong</h2>
+  <svg viewBox="0 0 760 280" width="100%">
+    <line x1="40" y1="250" x2="730" y2="250" stroke="#1a1f2b" stroke-width="2"/>
+    <!-- Pd shaded region: Rician above T -->
+    <polygon points="401,188.6 411,177.2 420,165.3 430,153.5 440,142.2 449,132.0 459,123.4 469,116.8 478,112.7 488,111.3 498,112.6 507,116.6 517,123.1 527,131.6 536,141.8 546,153.0 556,164.8 565,176.6 575,188.1 585,198.8 594,208.4 604,217.0 614,224.2 623,230.3 633,235.3 643,239.2 652,242.2 662,244.5 672,246.2 681,247.4 691,248.3 701,248.9 710,249.3 720,249.6 720,250 401,250" fill="#dbe8ff"/>
+    <!-- Rayleigh (H0) -->
+    <polyline points="40,250.0 49,205.9 58,164.0 66,126.2 75,94.2 84,69.3 93,52.0 102,42.5 111,40.5 119,45.2 128,55.5 137,70.1 146,87.8 155,107.0 164,126.8 172,146.2 181,164.3 190,180.7 199,195.0 208,207.3 217,217.4 225,225.6 234,232.1 243,237.1 252,240.9 261,243.7 270,245.7 278,247.1 287,248.1 296,248.8 305,249.2 314,249.5 323,249.7 331,249.8 340,249.9 349,249.9 358,250.0" fill="none" stroke="#1a1f2b" stroke-width="2.5"/>
+    <!-- Rician (H1) -->
+    <polyline points="195,250.0 205,250.0 215,250.0 225,249.9 234,249.9 244,249.8 254,249.6 263,249.4 273,249.1 283,248.5 293,247.8 302,246.7 312,245.1 322,243.0 331,240.2 341,236.5 351,231.8 361,225.9 370,218.9 380,210.6 390,201.1 399,190.5 409,179.1 419,167.2 429,155.3 438,143.8 448,133.4 458,124.5 467,117.6 477,113.1 487,111.3 497,112.3 506,116.0 516,122.3 526,130.6 535,140.7 545,151.9 555,163.7 565,175.7 574,187.2 584,198.0 594,207.8 603,216.5 613,223.9 623,230.0 633,235.1 642,239.0 652,242.1 662,244.4 671,246.2 681,247.4 691,248.3 701,248.9 710,249.3 720,249.6" fill="none" stroke="#0f62fe" stroke-width="2.5"/>
+    <!-- threshold -->
+    <line x1="401" y1="35" x2="401" y2="250" stroke="#b3261e" stroke-width="3" stroke-dasharray="8 5"/>
+    <g font-size="15">
+      <text x="120" y="30" fill="#1a1f2b">H₀: noise only → Rayleigh</text>
+      <text x="470" y="90" fill="#0f62fe">H₁: echo + noise → Rician (13.18 dB shown)</text>
+      <text x="409" y="52" fill="#b3261e" font-weight="700">threshold T</text>
+      <text x="500" y="205" fill="#0f62fe">shaded = P_d = 0.90</text>
+      <text x="330" y="272" fill="#b3261e">Rayleigh tail past T = P_fa = 10⁻⁶ (invisible here)</text>
+      <text x="695" y="243" fill="#5b6472">r</text>
+    </g>
+  </svg>
+  <div class="box rule"><p>Slide T right: P<sub>fa</sub> collapses, P<sub>d</sub> sags. Left: the screen fills.
+    <em class="term">The threshold cannot fix the overlap — only SNR can.</em> That is what the whole course was buying.</p></div>
+</section>
+
+<!-- 8 · Rayleigh & Rician -->
+<section class="slide">
+  <div class="kicker">1.3 The densities</div>
+  <h2>After the envelope detector: Rayleigh and Rician</h2>
+  <div class="cols">
+    <div>
+      <p>I and Q: independent Gaussians, variance σ² each — <em class="term">total noise power
+      N = 2σ²</em> <span class="warn">(flag this 2; it is today's landmine)</span>.
+      Envelope r = √(I²+Q²):</p>
+      <div class="math">H₀: p(r) = (r/σ²)·e<sup>−r²/2σ²</sup> <span class="muted small">(Rayleigh)</span></div>
+      <div class="math">H₁: Rician — Rayleigh bent around the echo amplitude A</div>
+      <p class="small muted">Why envelope? The echo's phase is unknowable (range mod λ/2 = 1.5 cm sets it).
+      Discard the phase, keep the energy — that is why Rayleigh, not Gaussian, runs today.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 760 280" width="100%">
+        <line x1="40" y1="250" x2="730" y2="250" stroke="#1a1f2b" stroke-width="2"/>
+        <polyline points="40,250.0 49,205.9 58,164.0 66,126.2 75,94.2 84,69.3 93,52.0 102,42.5 111,40.5 119,45.2 128,55.5 137,70.1 146,87.8 155,107.0 164,126.8 172,146.2 181,164.3 190,180.7 199,195.0 208,207.3 217,217.4 225,225.6 234,232.1 243,237.1 252,240.9 261,243.7 270,245.7 278,247.1 287,248.1 296,248.8 305,249.2 314,249.5 323,249.7 331,249.8 340,249.9 349,249.9 358,250.0" fill="none" stroke="#1a1f2b" stroke-width="2.5"/>
+        <polyline points="59,248.0 69,246.5 79,244.6 89,241.9 98,238.4 108,233.8 118,228.0 127,220.9 137,212.4 147,202.5 157,191.5 166,179.5 176,166.9 186,154.2 195,142.1 205,131.0 215,121.5 225,114.2 234,109.6 244,107.8 254,109.0 263,113.1 273,119.8 283,128.7 293,139.4 302,151.2 312,163.5 322,175.8 331,187.7 341,198.7 351,208.7 361,217.4 370,224.7 380,230.8 390,235.8 399,239.6 409,242.6 419,244.8 429,246.5 438,247.6 448,248.4 458,249.0 467,249.4 477,249.6 487,249.8 497,249.9 506,249.9 516,250.0" fill="none" stroke="#b3261e" stroke-width="2.5"/>
+        <line x1="401" y1="60" x2="401" y2="250" stroke="#5b6472" stroke-width="2" stroke-dasharray="6 5"/>
+        <g font-size="15">
+          <text x="95" y="30" fill="#1a1f2b">noise only</text>
+          <text x="250" y="85" fill="#b3261e">echo + noise at SNR = 6 dB</text>
+          <text x="409" y="80" fill="#5b6472">T (10⁻⁶)</text>
+          <text x="440" y="130" fill="#b3261e">most of H₁ is BELOW T → P_d ≈ 0.01</text>
+        </g>
+      </svg>
+      <p class="small muted">At 6 dB the densities overlap hopelessly — no threshold saves you. Hour 2: how many dB honesty costs.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · Pfa exact -->
+<section class="slide">
+  <div class="kicker">1.4 The false alarm, exactly</div>
+  <h2>One integral that closes — and inverts by hand</h2>
+  <div class="math" style="font-size:4vh">
+    P<sub>fa</sub> = ∫<sub>T</sub><sup>∞</sup> (r/σ²) e<sup>−r²/2σ²</sup> dr = e<sup>−T²/2σ²</sup>
+    &nbsp;&nbsp;⇒&nbsp;&nbsp; T = √( N·ln(1/P<sub>fa</sub>) )
+  </div>
+  <p class="small muted" style="text-align:center">(N = 2σ² = the noise power your lecture-1 budget computes as kT₀BF)</p>
+  <div class="box rule">
+    <p>P<sub>fa</sub> = 10⁻⁶, unit noise power: <em class="term">T = 3.7169</em> —
+    the threshold sits <em class="term">11.40 dB above the mean noise power</em> (3.72× the rms envelope).
+    Hour 3 measures it with 10⁶ draws.</p>
+  </div>
+  <div class="box">
+    <p class="small">Why 10⁻⁶? <em class="term">Count decisions:</em> B = 1 MHz ≈ 10⁶ independent looks/s.
+    10⁻⁶ = one false blip <em>per second</em> — already enough that real systems add m-of-n confirmation.
+    10⁻³ = a thousand per second: a white screen. P<sub>fa</sub> is set by the decision rate, and the rate is set by B.</p>
+  </div>
+</section>
+
+<!-- 10 · knife edge -->
+<section class="slide">
+  <div class="kicker">1.4 The knife edge</div>
+  <h2>P<sub>fa</sub> is an exponential of a square</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.7vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.5vh 2vh">threshold moved by</td><td style="padding:.5vh 2vh">P<sub>fa</sub> becomes</td></tr>
+        <tr><td style="padding:.5vh 2vh">+0.5 dB</td><td style="padding:.5vh 2vh">1.9×10⁻⁷ <span class="muted small">(÷5.4)</span></td></tr>
+        <tr style="background:#e8f0fe"><td style="padding:.5vh 2vh">design</td><td style="padding:.5vh 2vh">1.0×10⁻⁶</td></tr>
+        <tr><td style="padding:.5vh 2vh">−0.5 dB</td><td style="padding:.5vh 2vh">4.5×10⁻⁶ <span class="muted small">(×4.5)</span></td></tr>
+        <tr style="background:#fdecea"><td style="padding:.5vh 2vh">exponent ÷2 <span class="muted small">(the σ² slip)</span></td><td style="padding:.5vh 2vh"><span class="warn">10⁻³ = √(10⁻⁶)</span></td></tr>
+      </table>
+      <p class="small muted" style="margin-top:1.5vh">Nothing else in this course responds to half a decibel like this.</p>
+    </div>
+    <div>
+      <div class="box trap">
+        <p><em class="term">The factor-of-2 landmine:</em> put the total noise power N in the per-channel
+        σ² slot and the exponent halves — P<sub>fa</sub> becomes its own square root.
+        10⁻⁶ → 10⁻³, silently, with plausible-looking numbers everywhere.</p>
+      </div>
+      <div class="box"><p class="small">Consequence for practice: <em class="term">never ship a threshold you
+        have not measured.</em> Hour 3 commits this exact bug and lets a million Monte Carlo draws catch it.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>The radar equation is fully yours — every factor has a home lecture; the last unearned number (13 dB) falls in hour 2.</li>
+    <li>σ is a fluctuating scattering property; stealth's two levers buy dB that the fourth root repays at <em class="term">25 cents on the dollar</em>.</li>
+    <li>P<sub>fa</sub> = e<sup>−T²/2σ²</sup> exactly; T = 3.72 on unit noise; <em class="term">half a dB moves P<sub>fa</sub> 5×</em> — and a factor of 2 in the exponent moves it a thousandfold.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2 puts the target into the noise — then teaches the threshold to set itself.</p>
+</section>
+
+<!-- 12 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>P<sub>d</sub>, Albersheim, Integration,<br>and CFAR</h1>
+  <p class="muted" style="margin-top:3vh">The 13 dB bar audited · fluctuation and integration reprice it · the threshold that estimates its own floor</p>
+</section>
+
+<!-- 13 · Marcum / Pd curve -->
+<section class="slide">
+  <div class="kicker">2.1 Detection probability</div>
+  <h2>P<sub>d</sub> is a Rician tail — Marcum's Q function</h2>
+  <div class="math" style="font-size:3.8vh">
+    P<sub>d</sub> = Q₁( √(2·SNR), √(2·ln(1/P<sub>fa</sub>)) )
+  </div>
+  <ul>
+    <li>Does not close in elementary functions — scipy evaluates it exactly (noncentral χ²);
+      the homework toolkit wraps it as <span class="mono">marcum_pd</span>, <em class="term">the referee</em>.</li>
+    <li>The curve is steep: at P<sub>fa</sub> = 10⁻⁶, P<sub>d</sub> goes 0.25 → 0.68 → 0.97 as SNR goes 10 → 12 → 14 dB.</li>
+    <li>Steepness is good news — it makes "detection range" a meaningful number instead of a 10 km smear.</li>
+  </ul>
+  <div class="box rule"><p>Design flow: the customer states (P<sub>d</sub>, P<sub>fa</sub>) → statistics give SNR<sub>min</sub> →
+    the radar equation (slide 2) turns SNR<sub>min</sub> into R<sub>max</sub>. The missing middle step is one formula away.</p></div>
+</section>
+
+<!-- 14 · Albersheim -->
+<section class="slide">
+  <div class="kicker">2.1 Albersheim's approximation</div>
+  <h2>The whiteboard version — with a datasheet</h2>
+  <div class="math" style="font-size:3.2vh">
+    A = ln(0.62/P<sub>fa</sub>) &nbsp;·&nbsp; B = ln( P<sub>d</sub>/(1−P<sub>d</sub>) )<br>
+    SNR<sub>dB</sub> = −5·log₁₀N + ( 6.2 + 4.54/√(N+0.44) ) · log₁₀( A + 0.12AB + 1.7B )
+  </div>
+  <div class="box rule">
+    <p><em class="term">Validity envelope (state it like a spec):</em> ~0.2 dB for
+    10⁻⁷ ≤ P<sub>fa</sub> ≤ 10⁻³, &nbsp;0.1 ≤ P<sub>d</sub> ≤ 0.9, &nbsp;1 ≤ N ≤ 8096.
+    Linear detector, N non-coherent pulses, <em>nonfluctuating</em> target.</p>
+  </div>
+  <p class="small muted">An approximation with a stated envelope is an instrument; one without is a rumor.
+  The homework checker measures the envelope — including the corner at (P<sub>d</sub> = 0.1, P<sub>fa</sub> = 10⁻⁷)
+  where it frays to 0.75 dB. Envelopes have corners; measure, don't worship.</p>
+</section>
+
+<!-- 15 · the audit -->
+<section class="slide">
+  <div class="kicker">2.1 The audit</div>
+  <h2>Lecture 1's 13 dB, decompressed</h2>
+  <div class="box rule">
+    <p>(P<sub>d</sub> = 0.9, P<sub>fa</sub> = 10⁻⁶, N = 1): Albersheim <em class="term">13.11 dB</em> · exact <em class="term">13.18 dB</em>.
+    The hand-wave was the compressed form of this spec all along.</p>
+  </div>
+  <table style="font-size:2.7vh; border-collapse:collapse; margin-top:2vh">
+    <tr class="muted small"><td style="padding:.4vh 2vh">target</td><td style="padding:.4vh 2vh">13 dB bar (L1)</td><td style="padding:.4vh 2vh">honest (0.9, 10⁻⁶)</td></tr>
+    <tr><td style="padding:.4vh 2vh">airliner</td><td style="padding:.4vh 2vh">32.65 km</td><td style="padding:.4vh 2vh">32.44 km</td></tr>
+    <tr><td style="padding:.4vh 2vh">fighter</td><td style="padding:.4vh 2vh">12.98 km</td><td style="padding:.4vh 2vh">12.90 km</td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.4vh 2vh">drone</td><td style="padding:.4vh 2vh">4.11 km</td><td style="padding:.4vh 2vh"><em class="term">4.08 km</em> (×0.9934)</td></tr>
+  </table>
+  <div class="box">
+    <p>What the hand-wave hid was not range — it was <em class="term">meaning</em>: at exactly 13 dB the delivered
+    P<sub>d</sub> = <em class="term">0.8744</em>. "Detectable to 4.11 km" always meant "an 87–90% coin per look."
+    And the coin degrades fast: P<sub>d</sub> 0.9 → 0.5 spans ~1.9 dB ≈ <em class="term">half a kilometer</em> of sky (R⁴: ~3.9 dB/km at 4 km).</p>
+  </div>
+</section>
+
+<!-- 16 · Swerling -->
+<section class="slide">
+  <div class="kicker">2.2 Fluctuation</div>
+  <h2>Swerling — one honest slide</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><em class="term">Case 0/5:</em> steady echo — everything so far.</li>
+        <li><em class="term">Cases 1–2:</em> many comparable scatterers — the echo <em>power</em> is exponential
+          (scan-to-scan / pulse-to-pulse).</li>
+        <li><em class="term">Cases 3–4:</em> one dominant scatterer + chorus.</li>
+      </ul>
+      <div class="math" style="margin-top:2vh">Swerling 1, N = 1: &nbsp; P<sub>d</sub> = P<sub>fa</sub><sup> 1/(1+SNR)</sup></div>
+    </div>
+    <div>
+      <div class="box trap">
+        <p>At (0.9, 10⁻⁶): SNR = ln P<sub>fa</sub>/ln P<sub>d</sub> − 1 → <em class="term">21.1 dB</em> —
+        <span class="warn">8 dB more</span> than the steady target. Demanding 90% forces you to fund the fades.</p>
+        <p class="small muted" style="margin-top:1vh">In range: ×0.63 — the honest drone range drops 4.08 → ~2.6 km if it Rayleigh-fades.
+        (At P<sub>d</sub> = 0.5 the gap nearly vanishes: fluctuation punishes ambition.)</p>
+      </div>
+      <div class="box"><p class="small">Operational reflex: any quoted detection range gets three questions —
+        <em class="term">what P<sub>d</sub>, what P<sub>fa</sub>, which Swerling?</em></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · integration -->
+<section class="slide">
+  <div class="kicker">2.3 Integration</div>
+  <h2>Why 10 pulses ≠ 10× range</h2>
+  <div class="cols">
+    <div>
+      <p><em class="term">Coherent</em> (before the detector; L15's FFT does this): voltages add,
+      noise powers add → SNR × N exactly. Ten pulses = +10 dB.</p>
+      <p style="margin-top:1.5vh"><em class="term">Non-coherent</em> (after the detector): phases are gone;
+      part of the gain is spent re-detecting.</p>
+      <table style="font-size:2.6vh; border-collapse:collapse; margin-top:1.5vh">
+        <tr class="muted small"><td style="padding:.4vh 2vh">for (0.9, 10⁻⁶)</td><td style="padding:.4vh 2vh">SNR/pulse</td></tr>
+        <tr><td style="padding:.4vh 2vh">1 pulse</td><td style="padding:.4vh 2vh">13.18 dB</td></tr>
+        <tr><td style="padding:.4vh 2vh">10 coherent</td><td style="padding:.4vh 2vh">3.18 dB</td></tr>
+        <tr style="background:#fdecea"><td style="padding:.4vh 2vh">10 non-coherent</td><td style="padding:.4vh 2vh">5.27 dB <span class="muted small">(2.1 dB tax)</span></td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box trap">
+        <p>Range rides the fourth root:</p>
+        <p class="math" style="margin:1.2vh 0">10 pulses coherent → ×10<sup>10/40</sup> = <span class="warn">1.78×</span> range<br>
+        non-coherent → <span class="warn">1.58×</span></p>
+        <p class="small muted">To <em>double</em> the drone's range: +12 dB after taxes — 16 coherent or ~25 non-coherent pulses.
+        Integration is how radars afford detection; R⁴ keeps every route expensive.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · war story -->
+<section class="slide">
+  <div class="kicker">2.4 Why CFAR exists</div>
+  <h2>The coastal radar whose P<sub>fa</sub> was set in the lab</h2>
+  <div class="box trap">
+    <p>Threshold verified against thermal noise at 10⁻⁶. On the coast, sea clutter raises the floor
+    <em class="term">20 dB</em>. The exponent divides by 100:</p>
+    <p class="math" style="margin:1.5vh 0">P<sub>fa</sub> = (10⁻⁶)<sup>1/100</sup> = 10<sup>−0.06</sup> = <span class="warn">0.87</span></p>
+    <p>Not 10⁻⁴. <em class="term">Eighty-seven percent.</em> ~870,000 false alarms per second at B = 1 MHz.
+    The screen goes white; the operator turns the gain down; the radar detects nothing at all.</p>
+  </div>
+  <p class="small muted" style="margin-top:2vh">Nobody mis-soldered anything. The threshold was a <em>constant</em>
+  in a world that isn't. Note the violence of the exponential: 20 dB of floor moved P<sub>fa</sub> five orders of
+  magnitude — and then saturation.</p>
+</section>
+
+<!-- 19 · CFAR window -->
+<section class="slide">
+  <div class="kicker">2.4 CA-CFAR</div>
+  <h2>Estimate the noise where the target isn't</h2>
+  <svg viewBox="0 0 760 240" width="100%">
+    <!-- cell row -->
+    <g>
+      <rect x="30"  y="90" width="200" height="44" rx="6" fill="#dbe8ff" stroke="#0f62fe" stroke-width="2"/>
+      <rect x="238" y="90" width="60"  height="44" rx="6" fill="#eef2f7" stroke="#5b6472" stroke-width="1.5"/>
+      <rect x="306" y="90" width="52"  height="44" rx="6" fill="#fdecea" stroke="#b3261e" stroke-width="2.5"/>
+      <rect x="366" y="90" width="60"  height="44" rx="6" fill="#eef2f7" stroke="#5b6472" stroke-width="1.5"/>
+      <rect x="434" y="90" width="200" height="44" rx="6" fill="#dbe8ff" stroke="#0f62fe" stroke-width="2"/>
+      <g font-size="15" text-anchor="middle">
+        <text x="130" y="117">n_train = 8 cells</text>
+        <text x="268" y="117">guard</text>
+        <text x="332" y="117" fill="#b3261e" font-weight="700">CUT</text>
+        <text x="396" y="117">guard</text>
+        <text x="534" y="117">n_train = 8 cells</text>
+      </g>
+      <g font-size="14" fill="#5b6472" text-anchor="middle">
+        <text x="130" y="160">the jury: local noise estimate</text>
+        <text x="332" y="70">cell under test</text>
+        <text x="534" y="160">…on both sides</text>
+        <text x="268" y="160">keeps the target's own</text>
+        <text x="268" y="178">energy out of its jury</text>
+      </g>
+      <path d="M130 168 L130 190 L640 190 L640 175" fill="none" stroke="#0f62fe" stroke-width="0"/>
+    </g>
+    <g font-size="16" text-anchor="middle">
+      <text x="380" y="225" fill="#1a1f2b">threshold = α × mean(training cells) &nbsp;→&nbsp; slides along the profile, riding the floor</text>
+    </g>
+    <!-- arrow -->
+    <g stroke="#1a1f2b" stroke-width="2">
+      <line x1="655" y1="112" x2="720" y2="112"/>
+      <path d="M720 112 l-12 -6 v12 z" fill="#1a1f2b" stroke="none"/>
+    </g>
+  </svg>
+  <div class="box rule">
+    <p>Square-law domain (power z = r², exponential under noise — <em class="term">note the domain change</em>).
+    The training sum is Gamma; the tail integral closes:
+    <span class="math inline">P<sub>fa</sub> = (1 + α/N)<sup>−N</sup> ⇒ α = N·(P<sub>fa</sub><sup>−1/N</sup> − 1)</span>,
+    N = total training cells.</p>
+  </div>
+</section>
+
+<!-- 20 · CFAR loss -->
+<section class="slide">
+  <div class="kicker">2.4 CA-CFAR</div>
+  <h2>The price of estimating: CFAR loss</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.7vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 2vh">N (total)</td><td style="padding:.4vh 2vh">α at 10⁻⁶</td><td style="padding:.4vh 2vh">CFAR loss</td></tr>
+        <tr><td style="padding:.4vh 2vh">8</td><td style="padding:.4vh 2vh">36.99</td><td style="padding:.4vh 2vh">4.28 dB</td></tr>
+        <tr style="background:#e8f0fe"><td style="padding:.4vh 2vh">16</td><td style="padding:.4vh 2vh">21.94</td><td style="padding:.4vh 2vh"><em class="term">2.01 dB</em></td></tr>
+        <tr><td style="padding:.4vh 2vh">32</td><td style="padding:.4vh 2vh">17.28</td><td style="padding:.4vh 2vh">0.97 dB</td></tr>
+        <tr><td style="padding:.4vh 2vh">64</td><td style="padding:.4vh 2vh">15.42</td><td style="padding:.4vh 2vh">0.48 dB</td></tr>
+        <tr class="muted"><td style="padding:.4vh 2vh">∞</td><td style="padding:.4vh 2vh">ln(1/P<sub>fa</sub>) = 13.82</td><td style="padding:.4vh 2vh">0 (known noise)</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="box rule"><p>CFAR loss = 10·log₁₀( α<sub>N</sub> / ln(1/P<sub>fa</sub>) ) — how far above the
+        known-noise ideal the adaptive threshold must sit because 16 cells is a small jury.
+        <em class="term">2 dB ≈ 11% of detection range, paid everywhere, always.</em></p></div>
+      <div class="box"><p class="small">So why not N = 200? Because the window is a bet that the world is
+        <em class="term">homogeneous across it</em> — and the world has edges. Next slide.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 21 · pathologies -->
+<section class="slide">
+  <div class="kicker">2.4 CA-CFAR</div>
+  <h2>Two blind spots, both measured in the homework</h2>
+  <div class="cols">
+    <div>
+      <div class="box trap">
+        <p><em class="term">Clutter edges.</em> A CUT just inside a 30 dB clutter wall has half its jury
+        still voting "cheap clear-side noise" → threshold too low → false alarms spray from the edge
+        (measured: <em class="term">~13× design P<sub>fa</sub></em> in the edge zone — and <em>worse</em>
+        with a longer window). Just past the far edge: the mirror image — an over-thresholded
+        <em class="term">blind strip</em>. The homework plants a 15 dB target there; your detector walks past it.</p>
+      </div>
+    </div>
+    <div>
+      <div class="box trap">
+        <p><em class="term">Masking.</em> Two drones six cells apart: the strong one sits in the weak one's
+        training window, inflates its noise estimate ~10 dB, and the weak drone — detectable alone —
+        vanishes. The jury was packed.</p>
+        <p class="small muted" style="margin-top:1vh">Fixes exist — smallest-of, censored, OS-CFAR
+        (order-statistic) — each buys robustness with extra loss or new edge behavior. Homework Q4:
+        pick one, price it.</p>
+      </div>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">The interface you build this week — <span class="mono">ca_cfar(power_profile, n_train, n_guard, pfa)</span> — is imported verbatim by lecture 15's range-Doppler pipeline.</p>
+</section>
+
+<!-- 22 · clutter -->
+<section class="slide">
+  <div class="kicker">2.5 Clutter, one slide</div>
+  <h2>The ground is ~60 dB bigger than the drone</h2>
+  <table style="font-size:2.7vh; border-collapse:collapse; margin-top:1vh">
+    <tr><td style="padding:.4vh 2vh">beam footprint at 4.08 km</td><td style="text-align:right;padding:.4vh 2vh">~257 m</td><td class="muted small">3.6° beam — what 33 dBi buys (G ≈ 26000/θ², L13)</td></tr>
+    <tr><td style="padding:.4vh 2vh">range cell, c/2B</td><td style="text-align:right;padding:.4vh 2vh">150 m</td><td class="muted small">B = 1 MHz</td></tr>
+    <tr><td style="padding:.4vh 2vh">illuminated patch</td><td style="text-align:right;padding:.4vh 2vh">≈ 3.9×10⁴ m²</td><td class="muted small">= +46 dBsm of dirt in the drone's cell</td></tr>
+    <tr><td style="padding:.4vh 2vh">reflectivity σ⁰ = −10 dB</td><td style="text-align:right;padding:.4vh 2vh">+36 dBsm</td><td class="muted small">modest suburban/low-grazing X-band number</td></tr>
+    <tr style="border-top:2px solid #1a1f2b"><td style="padding:.4vh 2vh">vs the −20 dBsm drone</td><td style="text-align:right;padding:.4vh 2vh"><em class="term">~56 dB</em></td><td class="muted small">call it 60 when the terrain is unkind</td></tr>
+  </table>
+  <div class="box rule">
+    <p>No threshold survives that ratio in the power domain. The honest answer is a different axis:
+    <em class="term">the ground does not move.</em> Doppler / MTI (moving-target indication) — lecture 15 —
+    is where the drone outruns the dirt. (Lecture 12's phase-noise skirt already told you what limits <em>that</em>.)</p>
+  </div>
+</section>
+
+<!-- 23 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in three sentences</h2>
+  <ul class="big">
+    <li>(P<sub>d</sub> = 0.9, P<sub>fa</sub> = 10⁻⁶) costs <em class="term">13.18 dB</em> — lecture 1's 13 dB, decompressed; Albersheim approximates it inside a stated 0.2 dB envelope.</li>
+    <li>Fluctuation and integration reprice it: Swerling 1 wants <em class="term">+8 dB</em>; ten coherent pulses refund exactly 10; the fourth root converts everything at 25 cents on the dollar.</li>
+    <li>CA-CFAR sets the threshold from a local jury — α = N(P<sub>fa</sub><sup>−1/N</sup>−1), <em class="term">2 dB tax</em> at N = 16 — and fails measurably at edges and next to neighbors.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 makes every sentence print — then breaks the threshold with one factor of 2.</p>
+</section>
+
+<!-- 24 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in NumPy — every claim becomes a measured number</h2>
+  <ul>
+    <li>A million Rayleigh draws land on the pdf; T = 3.717 drawn where the tail is invisible</li>
+    <li>The exact inverse, then the Monte Carlo that distrusts it — 1051 crossings at design 10⁻³, <em class="term">2 at 10⁻⁶</em> (expected: 1 — you cannot measure 10⁻⁶ with 10⁶ trials)</li>
+    <li>P<sub>d</sub> vs SNR: Monte Carlo dots on the exact Marcum curve; Albersheim performing to its datasheet — <em class="term">13.11 vs 13.18 dB</em> at the course spec</li>
+    <li>Ten pulses, integrated both ways: ×1.78 / ×1.58 range — <em class="term">not ×10</em></li>
+    <li>CA-CFAR on three scenes: the promise kept, the edge blind strip, and a drone masked by its neighbor — with the control experiment that proves it</li>
+    <li>The deliberate bug: total noise power in the σ² slot → measured P<sub>fa</sub> <em class="term">1.1×10⁻³</em> instead of 2×10⁻⁶ — the screen goes white, politely, with a seed</li>
+  </ul>
+  <p class="muted" style="margin-top:2vh">Then the homework brief: <em>predictions first</em> — Q1 (what does honesty do to 4.11 km?) and Q2 (doubling the CFAR window moves loss and edge false alarms — which ways?).</p>
+</section>
+
+<!-- 25 · homework -->
+<section class="slide">
+  <div class="kicker">Homework 14</div>
+  <h2>See it through the noise</h2>
+  <ul>
+    <li><em class="term">Module 1:</em> the exact Rayleigh inverse + 10⁶-trial Monte Carlo P<sub>fa</sub> with binomial error bars.</li>
+    <li><em class="term">Module 2:</em> Albersheim vs Monte Carlo vs the Marcum referee, 6–16 dB; lecture 1's three ranges redrawn under the honest (0.9, 10⁻⁶) contract.</li>
+    <li><em class="term">Module 3 — the core:</em> <span class="mono">ca_cfar(power_profile, n_train, n_guard, pfa)</span> on three planted scenes: clean · clutter edge · two close drones. Report P<sub>fa</sub>, P<sub>d</sub>, CFAR loss; demonstrate masking with the control arm.</li>
+  </ul>
+  <div class="box rule">
+    <p>Referees: the Rayleigh closed form (planted truth) · Albersheim's published envelope · scene ground truth.
+    <span class="mono">--check</span> prints measured facts, never PASS/FAIL. ≤ 3 hours. AI welcome —
+    the predictions and reconciliations must be yours.</p>
+  </div>
+  <p class="muted" style="margin-top:2vh">Next lecture: the drone is still 56 dB under the dirt — so the radar stops asking
+  "how strong" and starts asking "how fast": FMCW (frequency-modulated continuous wave), Doppler, micro-Doppler.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 14 · The Radar Equation &amp; Detection · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

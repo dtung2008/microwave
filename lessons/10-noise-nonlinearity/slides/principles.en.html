@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 10 · Principles — Noise &amp; Nonlinearity</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 10 · Hours 1–2</div>
+  <h1>Noise &amp; Nonlinearity<br>The Receiver's Two Ceilings</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: the cascade engine + two tones, live → homework: the receiver budget</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Friis 1944, "Noise Figures of Radio Receivers" (4 pages, whole) · Steer Vol. 1 ch. 4 + Vol. 5 ch. 4 (free)</p>
+</section>
+
+<!-- 2 · the two ceilings -->
+<section class="slide">
+  <div class="kicker">1.1 The two ceilings</div>
+  <h2>A receiver is squeezed between two limits</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><em class="term">Below:</em> the thermal noise floor — weaker signals are simply gone. Lecture 1's −174 dBm/Hz, today with its physics.</li>
+        <li><em class="term">Above:</em> nonlinearity — stronger signals manufacture <em class="term">false signals (spurs)</em> inside your own passband.</li>
+        <li>Between them: the <em class="term">dynamic range</em> where the receiver actually works. Receiver design = prying the two apart.</li>
+      </ul>
+      <div class="box rule"><p class="small">Lecture 1 assumed NF (noise figure) = 3 dB and never said how.
+        This week the box is opened — and it contains an <em class="term">ordering problem</em>.</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 340 260" width="100%">
+        <line x1="50" y1="20" x2="50" y2="240" stroke="#1a1f2b" stroke-width="2"/>
+        <text x="20" y="30" font-size="13" fill="#5b6472">dBm</text>
+        <rect x="60" y="180" width="250" height="50" fill="#fdecea" rx="6"/>
+        <text x="185" y="210" font-size="14" text-anchor="middle" fill="#b3261e">noise floor — signals drown</text>
+        <rect x="60" y="30" width="250" height="50" fill="#fdecea" rx="6"/>
+        <text x="185" y="60" font-size="14" text-anchor="middle" fill="#b3261e">distortion — receiver invents targets</text>
+        <rect x="60" y="90" width="250" height="80" fill="#e8f0fe" rx="6"/>
+        <text x="185" y="125" font-size="14" text-anchor="middle" fill="#0f62fe" font-weight="700">the working window</text>
+        <text x="185" y="146" font-size="13" text-anchor="middle" fill="#5b6472">SFDR (spur-free dynamic range)</text>
+        <line x1="320" y1="90" x2="320" y2="170" stroke="#0f62fe" stroke-width="3"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 The two ceilings</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">Noise cascades by Friis 1944, and the first stage rules.</em><br>
+      <span class="muted">Every stage's noise is forgiven by the gain in front of it.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">Nonlinearity is a Taylor series — every spur is algebra.</em><br>
+      <span class="muted">IP3 (third-order intercept) is a fiction that predicts real spurs to fractions of a dB.</span></li>
+    <li><em class="term">Ordering, not parts, sets the radar's range.</em><br>
+      <span class="muted">Same five blocks, same gain — 12.9 dB of NF spread → ×2.1 in drone detection range.</span></li>
+  </ol>
+</section>
+
+<!-- 4 · thermal noise, fast -->
+<section class="slide">
+  <div class="kicker">1.2 Where noise comes from</div>
+  <h2>Every resistor is a transmitter</h2>
+  <div class="cols">
+    <div>
+      <div class="math">P<sub>available</sub> = kTB</div>
+      <ul>
+        <li>k = Boltzmann's constant; T = physical temperature (K); B = the bandwidth <em>you</em> listen in.</li>
+        <li>At T₀ = 290 K: <em class="term">−173.98 dBm/Hz</em> — lecture 1's −174, now with its origin.</li>
+        <li>B = 1 MHz → floor at <em class="term">−113.98 dBm</em>.</li>
+      </ul>
+      <div class="box"><p class="small">Johnson measured it (1928); Nyquist explained it — in the very next
+        paper of the same journal issue. Fine print: the full Planck form rolls off near 6 THz at 290 K;
+        at microwave, kTB is exact to parts in 10⁴.</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 320 220" width="100%">
+        <rect x="120" y="60" width="34" height="90" rx="6" fill="none" stroke="#1a1f2b" stroke-width="3"/>
+        <line x1="137" y1="20" x2="137" y2="60" stroke="#1a1f2b" stroke-width="3"/>
+        <line x1="137" y1="150" x2="137" y2="190" stroke="#1a1f2b" stroke-width="3"/>
+        <text x="170" y="110" font-size="16">R at T</text>
+        <path d="M20 200 q6 -14 12 0 t12 2 t12 -6 t12 4 t12 -2 t12 6 t12 -8 t12 4 t12 -2 t12 4" fill="none" stroke="#0f62fe" stroke-width="2"/>
+        <text x="20" y="180" font-size="13" fill="#0f62fe">v(t): zero mean, kTB of available power</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · first principles -->
+<section class="slide">
+  <div class="kicker">1.2 Where noise comes from · first principles</div>
+  <h2>Available power from a resistor — why the R cancels</h2>
+  <ol>
+    <li>Johnson's measurement, Nyquist's equipartition argument: open-circuit noise voltage density
+      <span class="math inline">v̄² = 4kTR</span> per hertz.</li>
+    <li>Matched load R: voltage divides, load sees v/2 → power
+      <span class="math inline">(v̄²/4)/R·B = kTB</span>.</li>
+    <li><em class="term">The R cancels.</em> 50 Ω or 1 MΩ — same available noise power.</li>
+  </ol>
+  <div class="box rule">
+    <p><em class="term">One number rules all receivers</em> — that is why a single floor (−174 dBm/Hz)
+    appears on every datasheet on earth. And B is a <em>choice</em>: noise is a density.</p>
+  </div>
+  <div class="box">
+    <p class="small"><em class="term">Shot noise</em>: current is charge in lumps — density 2qI, white; matters in
+    diodes/mixers (L12). <em class="term">Flicker (1/f) noise</em>: below a device's corner frequency —
+    harmless at 10 GHz, lethal near DC after the mixer (L12's direct-conversion demons). Today: thermal rules.</p>
+  </div>
+</section>
+
+<!-- 6 · Te and NF -->
+<section class="slide">
+  <div class="kicker">1.3 Noise temperature &amp; noise figure</div>
+  <h2>Two currencies for the same sin</h2>
+  <div class="cols">
+    <div>
+      <div class="box rule">
+        <p><em class="term">T<sub>e</sub></em> — equivalent noise temperature: the receiver's own noise,
+        played by a fictitious resistor at its input. Kelvin. No conventions.</p>
+      </div>
+      <div class="box rule">
+        <p><em class="term">F</em> — noise factor: F = SNR<sub>in</sub>/SNR<sub>out</sub>, <em>source at 290 K</em>.
+        NF = 10·log₁₀F. <span class="small muted">(SNR = signal-to-noise ratio)</span></p>
+      </div>
+      <div class="math">F = 1 + T<sub>e</sub>/T₀ &nbsp;·&nbsp; T<sub>e</sub> = T₀(F − 1)</div>
+    </div>
+    <div>
+      <table style="font-size:2.7vh; border-collapse:collapse">
+        <tr class="muted small"><td style="padding:.4vh 2vh">NF (dB)</td><td style="padding:.4vh 2vh">F</td><td style="padding:.4vh 2vh">T<sub>e</sub> (K)</td></tr>
+        <tr><td style="padding:.4vh 2vh">0.5</td><td style="padding:.4vh 2vh">1.122</td><td style="padding:.4vh 2vh">35</td></tr>
+        <tr><td style="padding:.4vh 2vh">1.0</td><td style="padding:.4vh 2vh">1.259</td><td style="padding:.4vh 2vh">75</td></tr>
+        <tr><td style="padding:.4vh 2vh">1.5</td><td style="padding:.4vh 2vh">1.413</td><td style="padding:.4vh 2vh">120</td></tr>
+        <tr style="background:#e8f0fe"><td style="padding:.4vh 2vh">3.0</td><td style="padding:.4vh 2vh">1.995</td><td style="padding:.4vh 2vh">288.6</td></tr>
+        <tr><td style="padding:.4vh 2vh">8.0</td><td style="padding:.4vh 2vh">6.31</td><td style="padding:.4vh 2vh">1540</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:1.5vh">The highlighted row: NF 3 dB means the receiver adds
+      (almost) exactly what a 290 K source feeds it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · 290 K fine print -->
+<section class="slide">
+  <div class="kicker">1.3 The 290 K fine print</div>
+  <h2>The convention is useful, universal — and slightly false everywhere</h2>
+  <div class="box trap">
+    <p>F is <em>defined</em> against a 290 K source. Point a dish at 50 K of cold sky and an
+    "NF = 1 dB" receiver (T<sub>e</sub> = 75 K) is not a 1 dB penalty — it is a
+    <em class="term">2.4× degradation</em> of system noise. Satellite &amp; radio-astronomy people budget in
+    T<sub>e</sub> and kelvin for exactly this reason.</p>
+  </div>
+  <div class="box rule">
+    <p><em class="term">The attenuator theorem:</em> a matched lossy passive at 290 K has
+    <em class="term">NF = its loss in dB</em> — it eats signal and replaces the lost noise with its own
+    thermal emission. Prices every cable and filter tonight; sharp end of hour 3's deliberate bug.</p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">Pre-empted question: "so is NF just loss?" — only for
+  matched passives at 290 K. For anything with gain, F is a measured personality.</p>
+</section>
+
+<!-- 8 · Friis cascade -->
+<section class="slide">
+  <div class="kicker">1.4 Friis 1944</div>
+  <h2>The cascade formula — refer everything to the front door</h2>
+  <svg viewBox="0 0 760 150" width="100%">
+    <g font-size="14" text-anchor="middle">
+      <polygon points="60,45 60,95 110,70" fill="#e8f0fe" stroke="#0f62fe" stroke-width="2"/>
+      <text x="80" y="120">G₁, F₁</text>
+      <polygon points="210,45 210,95 260,70" fill="#e8f0fe" stroke="#0f62fe" stroke-width="2"/>
+      <text x="230" y="120">G₂, F₂</text>
+      <polygon points="360,45 360,95 410,70" fill="#e8f0fe" stroke="#0f62fe" stroke-width="2"/>
+      <text x="380" y="120">G₃, F₃</text>
+      <g stroke="#1a1f2b" stroke-width="2">
+        <line x1="10" y1="70" x2="60" y2="70"/><line x1="110" y1="70" x2="210" y2="70"/>
+        <line x1="260" y1="70" x2="360" y2="70"/><line x1="410" y1="70" x2="470" y2="70"/>
+      </g>
+      <g fill="#b3261e" font-size="13">
+        <text x="160" y="52">+(F₂−1) here…</text>
+        <text x="160" y="34">…÷G₁ seen from input</text>
+        <text x="312" y="52">+(F₃−1) here…</text>
+        <text x="312" y="34">…÷G₁G₂</text>
+      </g>
+      <text x="580" y="75" font-size="17" fill="#1a1f2b">system F, at one plane</text>
+    </g>
+  </svg>
+  <div class="math" style="font-size:3.8vh">F = F₁ + (F₂ − 1)/G₁ + (F₃ − 1)/G₁G₂ + …</div>
+  <div class="box trap"><p><em class="term">Not a dB formula.</em> Every F and G in it is linear.
+    Hour 3 feeds it decibels on purpose — and it lies <em>plausibly</em>.</p></div>
+</section>
+
+<!-- 9 · Friis in temperature + the paper -->
+<section class="slide">
+  <div class="kicker">1.4 Friis 1944 · first principles</div>
+  <h2>Why it's true: watts add, so temperatures add</h2>
+  <div class="math">T<sub>sys</sub> = T₁ + T₂/G₁ + T₃/(G₁G₂) + … &nbsp;&nbsp;
+    <span class="muted small">then T<sub>i</sub> = T₀(F<sub>i</sub> − 1) → the F form</span></div>
+  <ul>
+    <li>Noise powers are powers: they add in watts at any plane. Divide by the gain that brought them there.</li>
+    <li>The formula says one thing: <em class="term">gain ahead of you forgives your sins.</em></li>
+  </ul>
+  <div class="box rule">
+    <p><em class="term">Read the original</em> — Friis, "Noise Figures of Radio Receivers," Proc. IRE 1944
+    [R20]: four pages, assigned whole. He defines NF so competing receivers can be compared at all, then
+    derives the cascade in half a page. His notation is ours; eighty years later you apply it unchanged tonight.</p>
+  </div>
+</section>
+
+<!-- 10 · three front-ends -->
+<section class="slide">
+  <div class="kicker">1.4 Friis, worked</div>
+  <h2>Three front-ends, same five parts — the homework's box</h2>
+  <p class="small muted">cable −2 dB · LNA (low-noise amplifier) 20 dB / NF 1.5 · BPF (bandpass filter) −1.5 dB · mixer −7 dB / NF 8 · IF (intermediate-frequency) amp 30 dB / NF 4</p>
+  <table style="font-size:2.7vh; border-collapse:collapse; margin-top:1.5vh">
+    <tr class="muted small"><td style="padding:.4vh 2vh">ordering (antenna first)</td><td style="padding:.4vh 2vh">F terms</td><td style="padding:.4vh 2vh">NF</td></tr>
+    <tr style="background:#e8f0fe"><td style="padding:.4vh 2vh">LNA→cable→BPF→mix→IF <span class="muted small">(mast)</span></td><td style="padding:.4vh 2vh" class="small">1.4125 +.0058 +.0065 +.1189 +.1696</td><td style="padding:.4vh 2vh"><em class="term">2.34 dB</em></td></tr>
+    <tr><td style="padding:.4vh 2vh">cable→LNA→BPF→mix→IF <span class="muted small">(shack)</span></td><td style="padding:.4vh 2vh" class="small">cable now costs its full 2 dB</td><td style="padding:.4vh 2vh">4.04 dB</td></tr>
+    <tr style="background:#fdecea"><td style="padding:.4vh 2vh">cable→BPF→LNA→mix→IF <span class="muted small">("protect the LNA")</span></td><td style="padding:.4vh 2vh" class="small">3.5 dB of loss before any gain</td><td style="padding:.4vh 2vh">5.38 dB</td></tr>
+  </table>
+  <div class="box rule"><p><em class="term">Everything in front of the first gain is paid at face value;
+    everything behind it is divided by that gain.</em> Moving the cable behind the LNA saves 1.70 of its
+    2 dB — the missing 0.30 leaks back through Friis's denominators.</p></div>
+</section>
+
+<!-- 11 · antenna temperature and G/T -->
+<section class="slide">
+  <div class="kicker">1.5 Antenna temperature &amp; G/T</div>
+  <h2>The source has a temperature too</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>Antenna at the ground: T<sub>ant</sub> ≈ 290 K. Clear zenith sky: tens of K. The sun: thousands.</li>
+        <li>System noise: <span class="math inline">T<sub>sys</sub> = T<sub>ant</sub> + T<sub>e</sub></span>
+          — referenced at the <em>same plane</em> (be pedantic; spec sheets are).</li>
+      </ul>
+      <div class="box rule">
+        <p><em class="term">G/T</em> (gain over system temperature, dB/K): the receiver half of any link
+        budget in one number. Course radar, mast chain, T<sub>ant</sub> = 100 K:
+        T<sub>e</sub> = 207 K → T<sub>sys</sub> = 307 K → <em class="term">G/T = 8.1 dB/K</em>.</p>
+      </div>
+    </div>
+    <div>
+      <div class="box"><p class="small">Buying 3 dB of G/T with a bigger dish = steel and wind load.
+      Buying it with T<sub>e</sub> = one better LNA. That asymmetry is why low-noise design is a
+      profession — and why lecture 11 exists.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.6 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>Available noise power is <em class="term">kTB</em> and the R cancels — one floor for all receivers, −174 dBm/Hz, with 290 K fine print.</li>
+    <li>F and T<sub>e</sub> are two currencies for one fact; matched passives at 290 K have <em class="term">NF = loss</em>.</li>
+    <li>Friis 1944: <em class="term">the first gain forgives everything behind it</em> — 2.34 vs 5.38 dB from ordering the same five parts.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2 builds the other ceiling — the one your own amplifier holds over you.</p>
+</section>
+
+<!-- 13 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Nonlinearity, the Fiction<br>Called IP3, and the Squeeze</h1>
+  <p class="muted" style="margin-top:3vh">Taylor series → spurs next door · slope 3 and the extrapolated crossing · SFDR drawn · why the best chain is a judgment call</p>
+</section>
+
+<!-- 14 · Taylor series, one tone -->
+<section class="slide">
+  <div class="kicker">2.1 Nonlinearity is a Taylor series</div>
+  <h2>One tone in — every RF (radio-frequency) phenomenon out</h2>
+  <div class="math">y = a₁x + a₂x² + a₃x³ + … &nbsp;&nbsp;<span class="small muted">(a₁ = the gain you paid for; a₃ &lt; 0 in compression)</span></div>
+  <ul>
+    <li>x = A·cos ωt through <em class="term">x²</em>: DC shift + <em class="term">2nd harmonic</em> at 2ω — far away; the filter eats it.</li>
+    <li>Through <em class="term">x³</em>: 3rd harmonic at 3ω — far away — <em>and</em> a term at the fundamental:
+      <span class="math inline">(3/4)a₃A³</span> → <em class="term">gain compression</em>.</li>
+    <li><em class="term">P<sub>1dB</sub></em>: the input where gain has sagged 1 dB — every datasheet's first
+      nonlinearity number. For a pure cubic: P<sub>1dB</sub> ≈ IIP3 − 9.6 dB.</li>
+  </ul>
+  <div class="box"><p class="small">Memoryless + narrowband is the honest regime for this model; a₂'s
+    products are out of band, which is why third order is about to become the villain.</p></div>
+</section>
+
+<!-- 15 · two tones, IMD -->
+<section class="slide">
+  <div class="kicker">2.1 Two tones — intermodulation</div>
+  <h2>The cube puts spurs next door</h2>
+  <div class="cols">
+    <div>
+      <p>x = A(cos ω₁t + cos ω₂t); the cube's cross terms
+      3·cos²ω₁t·cos ω₂t land at</p>
+      <div class="math">2f₁ − f₂ and 2f₂ − f₁,&nbsp; amplitude (3/4)a₃A³</div>
+      <ul class="small" style="font-size:2.4vh">
+        <li><em class="term">IMD3</em> (third-order intermodulation distortion): tones 100 kHz apart → spurs 100 kHz <em>outside</em> them — in-band, unfilterable, born after every filter you own.</li>
+        <li>2nd-order products (f₁+f₂, f₂−f₁): far away — filterable, forgivable.</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="0 0 360 230" width="100%">
+        <line x1="20" y1="190" x2="345" y2="190" stroke="#1a1f2b" stroke-width="2"/>
+        <g stroke-width="6" stroke-linecap="round">
+          <line x1="120" y1="190" x2="120" y2="60" stroke="#0f62fe"/>
+          <line x1="150" y1="190" x2="150" y2="60" stroke="#0f62fe"/>
+          <line x1="90"  y1="190" x2="90"  y2="140" stroke="#b3261e"/>
+          <line x1="180" y1="190" x2="180" y2="140" stroke="#b3261e"/>
+          <line x1="290" y1="190" x2="290" y2="155" stroke="#5b6472"/>
+          <line x1="315" y1="190" x2="315" y2="155" stroke="#5b6472"/>
+        </g>
+        <g font-size="13" text-anchor="middle">
+          <text x="120" y="48" fill="#0f62fe">f₁</text><text x="150" y="48" fill="#0f62fe">f₂</text>
+          <text x="82" y="128" fill="#b3261e">2f₁−f₂</text><text x="190" y="128" fill="#b3261e">2f₂−f₁</text>
+          <text x="302" y="142" fill="#5b6472">3f₁ · 3f₂ · 2f₁+f₂ …</text>
+          <text x="302" y="215" fill="#5b6472">far away — filterable</text>
+          <text x="135" y="215" fill="#b3261e">next door — yours forever</text>
+        </g>
+        <rect x="70" y="55" width="130" height="140" fill="none" stroke="#0f62fe" stroke-dasharray="5 4" rx="6"/>
+        <text x="135" y="80" font-size="12" fill="#0f62fe" text-anchor="middle">your passband</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · IP3 -->
+<section class="slide">
+  <div class="kicker">2.2 IP3 — the extrapolated fiction</div>
+  <h2>Two slopes must cross — nothing survives to the crossing</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>Fundamental: slope 1. IMD3: <em class="term">slope 3</em> — raise both tones 1 dB, spurs jump 3, gap closes 2.</li>
+        <li>The extrapolated crossing: <em class="term">IP3</em> — input-referred <em class="term">IIP3</em> or output <em class="term">OIP3</em> = IIP3 + gain.</li>
+        <li>Real amplifiers compress ~9.6 dB below it (our −5 dBm LNA: P<sub>1dB</sub> = −14.6 dBm in).</li>
+      </ul>
+      <div class="box rule">
+        <p>The fiction predicts real spurs:<br><em class="term">spur below carrier = 2·(IIP3 − P<sub>in</sub>)</em>.<br>
+        <span class="small muted">Tones at −30 dBm, IIP3 −5 dBm → spurs 50 dB down. Hour 3 measures 49.9.</span></p>
+      </div>
+    </div>
+    <div>
+      <svg viewBox="0 0 360 260" width="100%">
+        <line x1="40" y1="230" x2="340" y2="230" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="230" x2="40" y2="20" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="200" x2="280" y2="80" stroke="#0f62fe" stroke-width="3"/>
+        <line x1="280" y1="80" x2="320" y2="60" stroke="#0f62fe" stroke-width="2" stroke-dasharray="6 5"/>
+        <line x1="130" y1="230" x2="280" y2="80" stroke="#b3261e" stroke-width="3"/>
+        <line x1="280" y1="80" x2="300" y2="60" stroke="#b3261e" stroke-width="2" stroke-dasharray="6 5"/>
+        <circle cx="288" cy="76" r="6" fill="none" stroke="#1a1f2b" stroke-width="2.5"/>
+        <text x="300" y="88" font-size="14">IP3</text>
+        <text x="90" y="150" font-size="13" fill="#0f62fe">fundamental, slope 1</text>
+        <text x="190" y="205" font-size="13" fill="#b3261e">IMD3, slope 3</text>
+        <text x="190" y="250" font-size="13" fill="#5b6472">P_in (dBm) →</text>
+        <path d="M255 105 q10 14 0 24" stroke="#5b6472" fill="none" stroke-width="1.5"/>
+        <text x="240" y="128" font-size="11" fill="#5b6472">compression sets in first</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 17 · cascade IIP3 -->
+<section class="slide">
+  <div class="kicker">2.2 Cascade IIP3 — Friis's mirror twin</div>
+  <h2>Gain behind you forgives noise; gain ahead of you aggravates distortion</h2>
+  <div class="math" style="font-size:3.6vh">1/IP3 = 1/IP3₁ + G₁/IP3₂ + G₁G₂/IP3₃ + …</div>
+  <p class="small muted" style="text-align:center">all linear, input-referred, spur voltages adding in phase (the honest worst case); passives contribute 1/∞ = 0</p>
+  <div class="cols" style="margin-top:1.5vh">
+    <div>
+      <div class="box rule"><p class="small"><em class="term">Noise</em> punishes what is <em>early and lossy</em>.<br>
+      <em class="term">Distortion</em> punishes what is <em>late and driven</em>.</p></div>
+    </div>
+    <div>
+      <div class="box"><p class="small">Mast-chain blame table (hour 3 prints it): the LNA tops <em>both</em>
+      columns — F term 1.41 of 1.71, and 3.16 of 5.47 mW⁻¹ in 1/IP3. The same 20 dB that hides the
+      mixer's noise exposes its linearity.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · SFDR derived -->
+<section class="slide">
+  <div class="kicker">2.3 SFDR — derived and drawn</div>
+  <h2>Both ceilings on one axis</h2>
+  <div class="cols">
+    <div>
+      <ol class="small" style="font-size:2.4vh">
+        <li><em class="term">MDS</em> (minimum detectable signal) = −174 + 10log₁₀B + NF dBm <span class="muted">(SNR = 0 convention)</span></li>
+        <li>Spurs (input-referred): P<sub>spur</sub> = 3P<sub>in</sub> − 2·IIP3</li>
+        <li>Set P<sub>spur</sub> = MDS → P<sub>in,max</sub> = (2·IIP3 + MDS)/3</li>
+      </ol>
+      <div class="math" style="font-size:3.6vh">SFDR = (2/3)·(IIP3 − MDS)</div>
+      <div class="box rule"><p class="small">Mast chain, B = 1 MHz: MDS = −111.64 dBm,
+        P<sub>in,max</sub> = −42.13 dBm, <em class="term">SFDR = 69.5 dB</em>. The 2/3 is the
+        3:1 slope geometry — nothing more.</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 360 270" width="100%">
+        <line x1="40" y1="240" x2="340" y2="240" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="240" x2="40" y2="20" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="40" y1="205" x2="300" y2="75" stroke="#0f62fe" stroke-width="3"/>
+        <line x1="150" y1="240" x2="300" y2="90" stroke="#b3261e" stroke-width="3"/>
+        <line x1="40" y1="180" x2="340" y2="180" stroke="#5b6472" stroke-width="2" stroke-dasharray="6 5"/>
+        <text x="46" y="172" font-size="12" fill="#5b6472">noise floor (MDS)</text>
+        <line x1="210" y1="180" x2="210" y2="120" stroke="#b3261e" stroke-width="4"/>
+        <text x="220" y="145" font-size="14" fill="#b3261e" font-weight="700">SFDR</text>
+        <text x="210" y="260" font-size="12" fill="#5b6472" text-anchor="middle">P_in where spurs surface</text>
+        <text x="80" y="120" font-size="13" fill="#0f62fe">signal</text>
+        <text x="230" y="215" font-size="13" fill="#b3261e">IMD3</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 19 · SFDR fine print -->
+<section class="slide">
+  <div class="kicker">2.3 SFDR fine print</div>
+  <h2>The 2/3 has consequences</h2>
+  <div class="box rule">
+    <p>Widen B by 10 dB → MDS rises 10 dB, but <em class="term">SFDR falls only 6.67 dB</em>.
+    Measured: <em class="term">89.51 / 69.51 / 56.17 dB</em> at 1 kHz / 1 MHz / 100 MHz.
+    One floor shift, three different exponents — homework Q5 collects all three.</p>
+  </div>
+  <div class="box trap">
+    <p><em class="term">For radar, the two tones are two targets:</em> a truck near the radar and a drone at
+    the edge of the beam. An SFDR shortfall paints <em>phantom targets between them</em> — false returns your
+    own receiver manufactured, indistinguishable until you check the spur arithmetic. L14's CFAR
+    (constant false-alarm rate) inherits every ghost made here.</p>
+  </div>
+</section>
+
+<!-- 20 · the squeeze -->
+<section class="slide">
+  <div class="kicker">2.4 The linearity–noise squeeze</div>
+  <h2>The sentence that defines receiver design</h2>
+  <div class="box rule">
+    <p class="big"><em class="term">Sensitivity wants maximum gain as early as possible; linearity wants
+    minimum gain as late as possible. You cannot fully have both.</em></p>
+  </div>
+  <ul style="margin-top:2vh">
+    <li>More LNA gain → NF ↓ and IIP3 ↓. A pad or filter up front → IIP3 ↑ dB-for-dB and NF ↑ dB-for-dB.</li>
+    <li>Tonight's shootout, quantified: best-MDS chain ≠ best-SFDR chain — 0.30 dB apart in one currency,
+      0.44 dB in the other. <em class="term">Choosing is a judgment about the threat environment.</em></li>
+  </ul>
+  <p class="small muted" style="margin-top:1.5vh">The homework's planted "obvious" chain — filter first to
+  protect the LNA — spends 3.04 dB of NF to buy out-of-band linearity headroom. Sometimes that is even right;
+  Q4 makes you argue both sides.</p>
+</section>
+
+<!-- 21 · measuring -->
+<section class="slide">
+  <div class="kicker">2.4 Measuring NF and IP3 — in concept</div>
+  <h2>A ratio thermometer and a spur ruler</h2>
+  <div class="cols">
+    <div>
+      <div class="box rule">
+        <p><em class="term">Y-factor (NF):</em> a calibrated noise diode — its violence quoted as ENR
+        (excess noise ratio) — switched hot/cold at the input. One power ratio Y, then
+        F = ENR/(Y − 1).</p>
+      </div>
+      <p class="small muted" style="margin-top:1vh">Hour 3, four lines: ENR 15 dB, our 1.5 dB LNA →
+      Y = 13.69 dB → NF = 1.5000 recovered. Two power readings and a division — no absolute calibration.</p>
+    </div>
+    <div>
+      <div class="box rule">
+        <p><em class="term">Two-tone (IP3):</em> two clean generators, one spectrum analyzer. Confirm the
+        spurs ride slope 3, then extrapolate.</p>
+      </div>
+      <div class="box trap">
+        <p class="small">Trap: is the spur from the device — or from the <em>analyzer's</em> own mixer?
+        Pad the analyzer 10 dB: spur drops 10 → real; drops 30 → the instrument confessing.
+        Instruments obey the same Taylor series.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 22 · war story -->
+<section class="slide">
+  <div class="kicker">2.4 War story</div>
+  <h2>The "improved" front end</h2>
+  <ul>
+    <li>Coastal radar, original build: LNA in a weatherproof box at the antenna — mast chain, <em class="term">NF 2.3 dB</em>.</li>
+    <li>Modernization: LNA moved indoors (no ladder to service it), band filter moved ahead of it for
+      lightning protection. Cable → filter → LNA: <em class="term">NF 5.4 dB</em>.</li>
+    <li><em class="term">3 dB of system NF — half the sensitivity — gone</em>, with no failed part anywhere.
+      Ranges quietly 16% short (3 dB across R⁴); blamed on weather for a season.</li>
+  </ul>
+  <div class="box trap">
+    <p>Nobody changed a part number, so nobody re-ran Friis. <em class="term">The block diagram is a design
+    document, and its order is load-bearing.</em> Tonight your checker convicts this exact chain.</p>
+  </div>
+</section>
+
+<!-- 23 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.5 Recap</div>
+  <h2>Hour 2 in three sentences</h2>
+  <ul class="big">
+    <li>Cubes put spurs <em class="term">next door</em>, at slope 3 — and IP3 is the fiction that prices them.</li>
+    <li>The cascade formulas are mirror twins: noise forgiven by gain <em>behind</em>, distortion aggravated by gain <em>ahead</em>.</li>
+    <li><em class="term">SFDR = (2/3)(IIP3 − MDS)</em> — 69.5 dB for the mast chain in 1 MHz — and the squeeze makes "best" a judgment call.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 builds the engine, watches the 3:1 slope live, and commits one instructive felony against Friis.</p>
+</section>
+
+<!-- 24 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in NumPy — every claim becomes a printed number</h2>
+  <ul>
+    <li>The noise vocabulary — the NF↔T<sub>e</sub> table, and a Y-factor measurement in four lines</li>
+    <li>The cascade engine — Friis in twelve lines; three front-ends ranked: <em class="term">2.34 / 4.04 / 5.38 dB</em></li>
+    <li>Two tones meet a cubic — spur slope <em class="term">3.0000</em> measured by FFT (fast Fourier transform); the −5 dBm fiction recovered from real spurs</li>
+    <li>SFDR at three bandwidths — 89.51 / 69.51 / 56.17 dB, the 2/3 at work</li>
+    <li>The deliberate bug — Friis fed decibels: NF = 1.65 dB, <em class="term">plausible and wrong</em>; the attenuator invariant (exactly 2.0000) catches it</li>
+    <li>The stakes — drone at <em class="term">4.34 km or 2.07 km</em> from ordering alone</li>
+  </ul>
+  <p class="muted" style="margin-top:2.5vh">Then the homework brief: <em>predictions first</em> —
+  Q1 (the cable move) and Q2 (the spur arithmetic) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 10 · Noise &amp; Nonlinearity · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

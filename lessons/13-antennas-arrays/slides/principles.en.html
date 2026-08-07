@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture 13 · Principles — Antennas &amp; Arrays</title>
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1a1f2b; --muted: #5b6472; --accent: #0f62fe;
+    --warn: #b3261e; --chip: #eef2f7; --code: #f4f6f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  .slide { display: none; width: 100vw; height: 100vh; padding: 6vh 7vw;
+    flex-direction: column; justify-content: safe center; overflow-y: auto; }
+  .slide.active { display: flex; }
+
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; font-size: 1.7vh; margin-bottom: 1.2vh; }
+  h1 { font-size: 6.4vh; line-height: 1.12; font-weight: 700; }
+  h2 { font-size: 4.6vh; line-height: 1.15; margin-bottom: 3.2vh; }
+  p, li { font-size: 2.9vh; line-height: 1.5; }
+  ul, ol { margin-left: 3.2vh; margin-top: .6vh; }
+  li { margin-bottom: 1.4vh; }
+  li > ul { margin-top: .8vh; }
+  .muted { color: var(--muted); }
+  .small { font-size: 2.2vh; }
+  .big { font-size: 3.6vh; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  em.term { font-style: normal; font-weight: 650; }
+
+  .cols { display: flex; gap: 4vw; align-items: center; }
+  .cols > div { flex: 1; }
+
+  .box { background: var(--chip); border-radius: 1.2vh; padding: 2.4vh 2.8vh;
+    margin-top: 2.4vh; }
+  .box.rule { border-left: .7vh solid var(--accent); }
+  .box.trap { border-left: .7vh solid var(--warn); }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+    background: var(--code); border-radius: .5vh; padding: 0 .6vh;
+    font-size: .92em; }
+
+  /* math */
+  .math { font-family: "Cambria Math", Cambria, Georgia, serif;
+    font-size: 3.4vh; text-align: center; margin: 2.6vh 0; }
+  .math.inline { display: inline; margin: 0; font-size: 1em; }
+  sup, sub { font-size: .62em; }
+  .pre { vertical-align: super; font-size: .62em; }
+  .mat { display: inline-grid; grid-auto-flow: row; vertical-align: middle;
+    border-left: .35vh solid var(--ink); border-right: .35vh solid var(--ink);
+    border-radius: .9vh; padding: .8vh 1.4vh; gap: .5vh 2.2vh; }
+  .mat span { text-align: center; }
+  .m3 { grid-template-columns: repeat(3, auto); }
+  .m2 { grid-template-columns: repeat(2, auto); }
+  .m1 { grid-template-columns: auto; }
+
+  /* over-dot (time derivative): deterministic placement instead of Unicode
+     combining marks, which browsers position inconsistently on Greek letters */
+  .od { display: inline-block; position: relative; }
+  .od::after { content: "\2022"; position: absolute; left: 0; width: 100%;
+    text-align: center; top: -0.72em; font-size: 0.45em; line-height: 1; }
+
+  footer { position: fixed; bottom: 2vh; right: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+  .sec { position: fixed; bottom: 2vh; left: 3vw; color: var(--muted);
+    font-size: 1.8vh; }
+
+  svg text { font-family: inherit; }
+
+  @media print {
+    .slide { display: flex; page-break-after: always; height: 100vh; }
+    footer, .sec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide">
+  <div class="kicker">Microwave Engineering Foundations · Lecture 13 · Hours 1–2</div>
+  <h1>Antennas &amp; Arrays<br>Where Circuits Meet Fields</h1>
+  <p class="muted" style="margin-top:3vh">Principles (100 min) → break → Tools: the array-factor engine, live → homework: the aperture</p>
+  <p class="small muted" style="margin-top:6vh">Reading: Orfanidis, <em>Electromagnetic Waves and Antennas</em>, chs. 15, 19–20 (free) · Steer Vol. 1 antenna chapter</p>
+</section>
+
+<!-- 2 · the debt -->
+<section class="slide">
+  <div class="kicker">1.1 The debt this lecture pays</div>
+  <h2>Lecture 1 wrote "G = 33 dBi" and promised an explanation</h2>
+  <div class="cols">
+    <div>
+      <div class="box"><p><em class="term">The circuit face</em></p>
+        <p class="small muted">an impedance Z<sub>A</sub> — lecture 2's load, lecture 3's matching problem</p></div>
+      <div class="box"><p><em class="term">The field face</em></p>
+        <p class="small muted">a pattern over the sky — gain, beamwidth, sidelobes</p></div>
+    </div>
+    <div>
+      <div class="box rule"><p>The antenna is a <em class="term">transducer</em>:
+        one device, two descriptions. The course's two halves — lines &amp; matching (L2–9),
+        systems &amp; detection (L10–16) — meet inside it.</p></div>
+      <p class="small muted" style="margin-top:2vh">Everything feeding the antenna is built: lines, matches, filters, receiver. Today the port grows a far field.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · three claims -->
+<section class="slide">
+  <div class="kicker">1.1 Why this lecture exists</div>
+  <h2>Three claims for today</h2>
+  <ol class="big">
+    <li style="margin-bottom:3vh"><em class="term">The antenna is a transducer with two faces.</em><br>
+      <span class="muted">Impedance to the circuit, pattern to space — one device, two descriptions.</span></li>
+    <li style="margin-bottom:3vh"><em class="term">Gain is geometry, not amplification.</em><br>
+      <span class="muted">Passive. A<sub>e</sub> = Gλ²/4π finally closes Friis's loop from lecture 1.</span></li>
+    <li><em class="term">An array turns geometry into arithmetic.</em><br>
+      <span class="muted">The array factor is a ten-line sum. Beamwidth, sidelobes, grating lobes, steering — all inside it.</span></li>
+  </ol>
+</section>
+
+<!-- 4 · far-field picture -->
+<section class="slide">
+  <div class="kicker">1.2 The far-field picture</div>
+  <h2>Far enough away, the angular shape stops changing — that shape is the pattern</h2>
+  <svg viewBox="0 0 760 250" width="100%">
+    <circle cx="70" cy="125" r="9" fill="#0f62fe"/>
+    <path d="M62 110 q 10 -14 22 -6 q -16 2 -8 14 q 6 -12 14 -2" fill="none" stroke="#b3261e" stroke-width="1.6"/>
+    <path d="M100 95 A 60 60 0 0 1 100 155" fill="none" stroke="#5b6472" stroke-width="1.5"/>
+    <path d="M140 75 A 110 110 0 0 1 140 175" fill="none" stroke="#5b6472" stroke-width="1.5"/>
+    <path d="M180 58 A 160 160 0 0 1 180 192" fill="none" stroke="#5b6472" stroke-width="1.5"/>
+    <line x1="255" y1="30" x2="255" y2="220" stroke="#1a1f2b" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="255" y="243" font-size="14" text-anchor="middle">r ≈ 2D²/λ — the far-field boundary (24 cm array, 10 GHz: 3.8 m)</text>
+    <line x1="300" y1="70" x2="300" y2="180" stroke="#0f62fe" stroke-width="1.5"/>
+    <line x1="330" y1="70" x2="330" y2="180" stroke="#0f62fe" stroke-width="1.5"/>
+    <line x1="360" y1="70" x2="360" y2="180" stroke="#0f62fe" stroke-width="1.5"/>
+    <text x="330" y="60" font-size="13" fill="#0f62fe" text-anchor="middle">locally plane waves</text>
+    <g transform="translate(560,125)">
+      <path d="M0 0 L 150 -34 Q 168 0 150 34 Z" fill="#dbe8ff" stroke="#0f62fe" stroke-width="1.5"/>
+      <path d="M0 0 L 68 -62 Q 84 -56 78 -42 Z" fill="#eef2f7" stroke="#5b6472" stroke-width="1.2"/>
+      <path d="M0 0 L 68 62 Q 84 56 78 42 Z" fill="#eef2f7" stroke="#5b6472" stroke-width="1.2"/>
+      <text x="88" y="6" font-size="13" text-anchor="middle">main lobe</text>
+      <text x="66" y="-70" font-size="12" fill="#5b6472">sidelobes</text>
+    </g>
+    <text x="70" y="90" font-size="13" fill="#b3261e" text-anchor="middle">near field: stored-energy swirl (Z_A's reactance)</text>
+    <text x="620" y="230" font-size="13" fill="#5b6472" text-anchor="middle">power density vs direction, fixed large R</text>
+  </svg>
+  <div class="box rule"><p class="small">Pattern F(θ, φ): power density vs direction, normalized to its own peak. Three features carry the whole day:
+    the main lobe, its −3 dB width — <em class="term">HPBW (half-power beamwidth)</em> — and the <em class="term">sidelobes</em>.</p></div>
+</section>
+
+<!-- 5 · directivity, gain -->
+<section class="slide">
+  <div class="kicker">1.2 Directivity and gain</div>
+  <h2>Gain is concentration — never amplification</h2>
+  <div class="math">D = <span class="inline">peak density / sphere-average density</span> = 4π/Ω<sub>A</sub> &nbsp;·&nbsp; G = e·D</div>
+  <ul>
+    <li>Ω<sub>A</sub> = beam solid angle; the isotropic radiator has D = 1, every real antenna concentrates.</li>
+    <li>e = radiation efficiency (ohmic + dielectric loss). Clean radar metalwork: 0.7–0.95 → today G ≈ D unless flagged.</li>
+    <li>Units: <em class="term">dBi</em> = gain over isotropic; <em class="term">dBd</em> = gain over a half-wave dipole (dBd + 2.15 = dBi).</li>
+  </ul>
+  <div class="box trap">
+    <p><em class="term">"33 dBi makes the signal 2000× stronger — like an amplifier?" No.</em>
+    Same total watts, shoved into a 4.5° cone instead of a sphere. Point the cone elsewhere and the
+    "gain" is negative. An amplifier is generous; an antenna is merely <em class="term">opinionated</em> —
+    and the opinion works in receive too (why G² sits in the radar equation).</p>
+  </div>
+</section>
+
+<!-- 6 · polarization -->
+<section class="slide">
+  <div class="kicker">1.2 Polarization</div>
+  <h2>The far field is a vector — the receiver projects onto its own</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big accent">0 dB</p><p class="small muted">matched (linear ∥ linear, RHCP ∥ RHCP)</p></div>
+    <div class="box" style="text-align:center"><p class="big accent">−3 dB</p><p class="small muted">circular vs linear — always, both ways</p></div>
+    <div class="box" style="text-align:center"><p class="big warn">−20…−30 dB</p><p class="small muted">"orthogonal" in real hardware (−∞ only on paper)</p></div>
+  </div>
+  <div class="box">
+    <p class="small">War story: a range test "lost" 3 dB everywhere for a week — every cable swapped, every
+    connector torqued twice. Linear horn, circularly polarized device under test; nobody wrote polarization on
+    the test plan, because polarization is <em class="term">invisible on a spectrum analyzer</em>. The 3 dB
+    was physics, findable only at the whiteboard.</p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">(RHCP = right-hand circular polarization. Radar meteorology and GPS live on this slide; we mostly stay co-polarized.)</p>
+</section>
+
+<!-- 7 · effective aperture -->
+<section class="slide">
+  <div class="kicker">1.3 Effective aperture</div>
+  <h2>A<sub>e</sub> = Gλ²/4π — Friis closes its loop</h2>
+  <div class="math" style="font-size:4vh">P<sub>r</sub> = S · A<sub>e</sub>, &nbsp; A<sub>e</sub> = G λ² / 4π</div>
+  <ul>
+    <li><em class="term">Why universal:</em> reciprocity — receive and transmit are the same physics run backwards,
+      so A<sub>e</sub>/G is one constant for <em>every</em> antenna. Solve any one antenna exactly and λ²/4π falls out
+      (derivation: Orfanidis ch. 15 — assigned, not board work).</li>
+    <li>At 10 GHz the <em>isotropic</em> antenna's aperture is λ²/4π = <em class="term">0.715 cm²</em> —
+      space hands every antenna a λ-sized catch basin. This is why lecture 1's λ² lived in the aperture, not the medium.</li>
+    <li>Course dish: 33 dBi ↔ A<sub>e</sub> = <em class="term">0.143 m²</em> — a 43 cm circle. The hardware on the roof is about that size. Numbers cohere.</li>
+  </ul>
+  <div class="box rule"><p>P<sub>r</sub> = P<sub>t</sub>G<sub>t</sub>G<sub>r</sub>λ²/(4πR)² was never anything but
+    <em class="term">density × aperture</em>. Every symbol now has an owner.</p></div>
+</section>
+
+<!-- 8 · three currencies -->
+<section class="slide">
+  <div class="kicker">1.3 One fact, three currencies</div>
+  <h2>Gain ↔ aperture ↔ beamwidth</h2>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p class="big">G = 4πA<sub>e</sub>/λ²</p><p class="small muted">gain from area</p></div>
+    <div class="box" style="text-align:center"><p class="big">θ ≈ λ/D</p><p class="small muted">beamwidth (rad) from size D</p></div>
+    <div class="box" style="text-align:center"><p class="big">D ≈ 4π/θ²</p><p class="small muted">directivity from beamwidth</p></div>
+  </div>
+  <div class="box rule">
+    <p>Concentrating into θ ≈ λ/D <em>requires</em> an aperture D wide — narrow beams are purchased with
+    physical size, in wavelengths. Hour 2 ends with one division in this currency:
+    <em class="term">what separates two drones 100 m apart at 5 km?</em></p>
+  </div>
+  <p class="small muted" style="margin-top:1.5vh">Sanity check en route: 33 dBi → θ ≈ √(4π/1995) ≈ 4.5°. Hold that number; it fails the drone question later.</p>
+</section>
+
+<!-- 9 · dipole -->
+<section class="slide">
+  <div class="kicker">1.4 Workhorse elements — data points, not derivations</div>
+  <h2>The half-wave dipole — the reference element</h2>
+  <div class="cols">
+    <div>
+      <table style="font-size:2.7vh; border-collapse:collapse">
+        <tr><td style="padding:.4vh 2vh">length</td><td style="padding:.4vh 2vh">λ/2 (15 mm @ 10 GHz)</td></tr>
+        <tr><td style="padding:.4vh 2vh">input R at resonance</td><td style="padding:.4vh 2vh">≈ 73 Ω <span class="muted small">(why 75 Ω cable exists)</span></td></tr>
+        <tr><td style="padding:.4vh 2vh">gain</td><td style="padding:.4vh 2vh">2.15 dBi</td></tr>
+        <tr><td style="padding:.4vh 2vh">pattern</td><td style="padding:.4vh 2vh">donut around the wire</td></tr>
+        <tr><td style="padding:.4vh 2vh">bandwidth</td><td style="padding:.4vh 2vh">~10%</td></tr>
+      </table>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 180" width="100%">
+        <line x1="150" y1="20" x2="150" y2="80" stroke="#1a1f2b" stroke-width="4"/>
+        <line x1="150" y1="100" x2="150" y2="160" stroke="#1a1f2b" stroke-width="4"/>
+        <circle cx="150" cy="90" r="6" fill="none" stroke="#0f62fe" stroke-width="2"/>
+        <ellipse cx="95" cy="90" rx="42" ry="26" fill="#dbe8ff" opacity="0.85"/>
+        <ellipse cx="205" cy="90" rx="42" ry="26" fill="#dbe8ff" opacity="0.85"/>
+        <text x="150" y="176" font-size="13" text-anchor="middle" fill="#5b6472">feed at the middle; donut pattern (cut shown)</text>
+      </svg>
+      <div class="box"><p class="small">Element patterns need the vector potential — Orfanidis chs. 15–17 has every
+        integral. An engineer carries the <em class="term">data sheet</em>.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · patch -->
+<section class="slide">
+  <div class="kicker">1.4 Workhorse elements</div>
+  <h2>The microstrip patch — lecture 5's stackup grows a radiator</h2>
+  <div class="cols">
+    <div>
+      <p><em class="term">The resonant-length story:</em> a λ/2-in-dielectric resonator whose two open edges
+        leak, in phase, broadside — an accidental two-element array.</p>
+      <div class="box"><p class="small">Design formulas (provided): W = (c/2f)√(2/(ε<sub>r</sub>+1)); ε<sub>eff</sub> Hammerstad-style;
+        L = c/(2f√ε<sub>eff</sub>) − 2ΔL with ΔL the fringing extension.</p></div>
+      <div class="box rule"><p class="small">10 GHz on RO4350B (ε<sub>r</sub> = 3.66, h = 0.508 mm):
+        <em class="term">9.82 mm × 7.68 mm</em>. L = 0.256 λ₀ — shorter than λ/2 because
+        ε<sub>eff</sub> = 3.37 shrinks the wave and fringing (ΔL = 0.24 mm/edge) shrinks the copper.</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 320 200" width="100%">
+        <rect x="30" y="130" width="260" height="16" fill="#eef2f7" stroke="#5b6472"/>
+        <rect x="30" y="146" width="260" height="7" fill="#1a1f2b"/>
+        <rect x="90" y="118" width="140" height="12" fill="#0f62fe"/>
+        <path d="M90 118 q -14 -22 -26 -26" fill="none" stroke="#b3261e" stroke-width="2"/>
+        <path d="M230 118 q 14 -22 26 -26" fill="none" stroke="#b3261e" stroke-width="2"/>
+        <text x="160" y="108" font-size="13" text-anchor="middle" fill="#b3261e">two leaking edges, in phase → broadside</text>
+        <text x="160" y="172" font-size="13" text-anchor="middle" fill="#5b6472">substrate ε_r, height h · ground plane below</text>
+        <text x="160" y="196" font-size="13" text-anchor="middle">~6 dBi · few % bandwidth · printable by the thousand</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · horn + teams -->
+<section class="slide">
+  <div class="kicker">1.4 Workhorse elements</div>
+  <h2>The horn — and the moral of the element zoo</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 320 160" width="100%">
+        <rect x="20" y="65" width="80" height="30" fill="#eef2f7" stroke="#1a1f2b" stroke-width="2"/>
+        <path d="M100 65 L 210 25 L 210 135 L 100 95 Z" fill="#dbe8ff" stroke="#1a1f2b" stroke-width="2"/>
+        <line x1="210" y1="25" x2="210" y2="135" stroke="#0f62fe" stroke-width="3"/>
+        <text x="60" y="55" font-size="13" text-anchor="middle">waveguide (L5)</text>
+        <text x="240" y="85" font-size="13">aperture</text>
+        <text x="160" y="155" font-size="13" text-anchor="middle" fill="#5b6472">flare until the mouth is an aperture: 10–25 dBi, wideband</text>
+      </svg>
+      <p class="small muted" style="margin-top:1vh">Calculable to fractions of a dB → the <em class="term">standard-gain horn</em> is what every antenna range measures against.</p>
+    </div>
+    <div>
+      <div class="box rule">
+        <p><em class="term">Elements are 2–8 dBi devices.</em> Nobody builds a 33 dBi <em>element</em> —
+        high gain means big aperture, and big apertures are built by <em class="term">replication</em>,
+        not heroic single radiators.</p>
+      </div>
+      <p class="muted" style="margin-top:2vh">Which is the cue for hour 2: the team.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · hour 1 recap -->
+<section class="slide">
+  <div class="kicker">1.5 Recap</div>
+  <h2>Hour 1 in three sentences</h2>
+  <ul class="big">
+    <li>One device, two faces: <em class="term">impedance</em> to the circuit, <em class="term">pattern</em> to space — and gain is concentration, never amplification.</li>
+    <li><em class="term">A<sub>e</sub> = Gλ²/4π</em> closes Friis's loop; gain ↔ aperture ↔ beamwidth ≈ λ/D are one fact in three currencies.</li>
+    <li>Elements are single-digit-dBi parts — every serious aperture is a <em class="term">team</em>.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 2 is about the team.</p>
+</section>
+
+<!-- 13 · hour 2 divider -->
+<section class="slide">
+  <div class="kicker">Hour 2</div>
+  <h1>Arrays —<br>the Main Event</h1>
+  <p class="muted" style="margin-top:3vh">The array factor, twice · beam anatomy · grating lobes · tapers as windows · steering</p>
+</section>
+
+<!-- 14 · ULA geometry -->
+<section class="slide">
+  <div class="kicker">2.1 The setup</div>
+  <h2>N elements on a line — one drawing carries every formula today</h2>
+  <svg viewBox="0 0 760 260" width="100%">
+    <line x1="80" y1="200" x2="680" y2="200" stroke="#5b6472" stroke-width="1"/>
+    <g fill="#0f62fe">
+      <circle cx="140" cy="200" r="8"/><circle cx="240" cy="200" r="8"/>
+      <circle cx="340" cy="200" r="8"/><circle cx="440" cy="200" r="8"/>
+      <circle cx="540" cy="200" r="8"/>
+    </g>
+    <text x="140" y="228" font-size="14" text-anchor="middle">n = 0</text>
+    <text x="240" y="228" font-size="14" text-anchor="middle">1</text>
+    <text x="340" y="228" font-size="14" text-anchor="middle">2</text>
+    <text x="540" y="228" font-size="14" text-anchor="middle">N−1</text>
+    <line x1="140" y1="245" x2="240" y2="245" stroke="#1a1f2b" stroke-width="1.5"/>
+    <text x="190" y="240" font-size="14" text-anchor="middle">d</text>
+    <line x1="140" y1="200" x2="140" y2="60" stroke="#5b6472" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="140" y="48" font-size="13" fill="#5b6472" text-anchor="middle">broadside (normal)</text>
+    <g stroke="#b3261e" stroke-width="2">
+      <line x1="110" y1="70" x2="200" y2="160"/>
+      <line x1="210" y1="70" x2="300" y2="160"/>
+      <line x1="310" y1="70" x2="400" y2="160"/>
+    </g>
+    <text x="300" y="60" font-size="14" fill="#b3261e">incoming plane wave, angle θ from broadside</text>
+    <path d="M140 130 A 70 70 0 0 1 190 150" fill="none" stroke="#1a1f2b" stroke-width="1.5"/>
+    <text x="185" y="125" font-size="15">θ</text>
+    <line x1="240" y1="200" x2="170" y2="130" stroke="#0f62fe" stroke-width="2" stroke-dasharray="4 4"/>
+    <text x="255" y="150" font-size="14" fill="#0f62fe">extra path to n = 0: d·sin θ → phase ψ = kd·sin θ</text>
+  </svg>
+  <div class="box rule"><p>AF(θ) = Σ<sub>n</sub> w<sub>n</sub> e<sup>jnψ</sup>, ψ = kd·sin θ, k = 2π/λ —
+    the <em class="term">array factor (AF)</em>, with complex weights w<sub>n</sub>.
+    That line is the whole theory; a <em class="term">ULA (uniform linear array)</em> is this drawing with equal spacing.</p></div>
+</section>
+
+<!-- 15 · derived twice -->
+<section class="slide">
+  <div class="kicker">2.1 The array factor, derived twice</div>
+  <h2>Fast: a geometric series · First-principles: phasor spokes</h2>
+  <div class="math">|AF| = |sin(Nψ/2) / sin(ψ/2)| &nbsp; <span class="small muted">(uniform weights; peak N at ψ = 0; nulls at ψ = 2πm/N)</span></div>
+  <svg viewBox="0 0 760 190" width="100%">
+    <g transform="translate(40,60)" stroke="#0f62fe" stroke-width="3" fill="none">
+      <polyline points="0,0 128,0"/>
+      <path d="M128 0 l -10 -5 l 0 10 z" fill="#0f62fe" stroke="none"/>
+    </g>
+    <text x="104" y="95" font-size="14" text-anchor="middle">broadside: ψ = 0 — collinear, sum = N</text>
+    <g transform="translate(300,45)" stroke="#0f62fe" stroke-width="2.5" fill="none">
+      <polyline points="0,0 13,0 25,5 34.2,14.2 39.2,26.2 39.2,39.2 34.2,51.2 25,60.4 13,65.4 0,65.4 -12,60.4 -21.2,51.2 -26.2,39.2 -26.2,26.2 -21.2,14.2 -12,5 0,0"/>
+    </g>
+    <text x="306" y="140" font-size="14" text-anchor="middle">first null: Nψ = 2π — the chain closes, sum = 0</text>
+    <g transform="translate(560,40)" stroke="#0f62fe" stroke-width="2.5" fill="none">
+      <polyline points="0,0 13,0 23.8,7.2 28.8,19.2 26.2,32 17.1,41.2 4.3,43.7 -7.7,38.7 -14.9,27.9 -14.9,14.9 -7.7,4.1 4.3,-0.9 17.1,1.7 26.2,10.9 28.8,23.6 23.8,35.6 13,42.9"/>
+      <line x1="0" y1="0" x2="13" y2="42.9" stroke="#b3261e" stroke-width="2.5"/>
+    </g>
+    <text x="566" y="140" font-size="14" text-anchor="middle">1.5 wraps: partial re-align — <tspan fill="#b3261e">a sidelobe, ≈ −13 dB</tspan></text>
+  </svg>
+  <div class="box rule"><p class="small">Nulls are <em class="term">complete wraps</em>; sidelobes are <em class="term">extra half-wraps</em>.
+    No taper exists yet — this is the raw geometry. (Week 15, "why does my FFT (fast Fourier transform) leak": this picture, ψ renamed.)</p></div>
+</section>
+
+<!-- 16 · anatomy -->
+<section class="slide">
+  <div class="kicker">2.2 Anatomy of the uniform beam</div>
+  <h2>Course array: N = 16, d = λ/2, 10 GHz — every feature a number</h2>
+  <svg viewBox="0 0 760 370" width="100%" style="max-height:44vh">
+    <line x1="40" y1="320" x2="720" y2="320" stroke="#1a1f2b" stroke-width="1.5"/>
+    <line x1="40" y1="20" x2="40" y2="320" stroke="#1a1f2b" stroke-width="1.5"/>
+    <line x1="40" y1="42.5" x2="720" y2="42.5" stroke="#5b6472" stroke-width="1" stroke-dasharray="5 5"/>
+    <line x1="40" y1="118.6" x2="720" y2="118.6" stroke="#b3261e" stroke-width="1" stroke-dasharray="5 5"/>
+    <text x="726" y="47" font-size="13" fill="#5b6472">−3 dB</text>
+    <text x="726" y="123" font-size="13" fill="#b3261e">−13.15</text>
+    <text x="34" y="25" font-size="13" text-anchor="end">0</text>
+    <text x="34" y="324" font-size="13" text-anchor="end">−40</text>
+    <text x="40" y="340" font-size="13" text-anchor="middle">−90°</text>
+    <text x="380" y="340" font-size="13" text-anchor="middle">0°</text>
+    <text x="720" y="340" font-size="13" text-anchor="middle">+90°</text>
+    <polyline fill="none" stroke="#0f62fe" stroke-width="1.6" points="40,320 48,320 56,320 64,320 66,315 68,301 70,293 72,285 74,278 76,271 78,265 80,259 82,253 84,245 86,241 88,236 90,232 92,228 94,224 96,220 98,217 100,214 102,210 104,208 106,206 108,204 110,203 112,202 114,201 116,200 118,200 120,201 122,202 124,203 126,205 128,208 130,211 132,215 134,220 135,226 137,233 139,242 141,254 143,269 145,290 147,320 150,320 152,315 153,297 154,283 155,271 156,262 157,253 158,246 159,240 160,234 161,229 162,225 163,221 164,217 165,214 166,211 167,208 168,204 169,202 170,201 171,200 172,199 173,198 175,198 177,198 178,199 179,200 180,201 181,203 182,205 183,207 184,210 185,217 186,222 187,227 188,232 189,239 190,247 191,257 192,269 193,284 194,304 195,320 198,320 199,310 200,287 201,270 202,257 203,237 204,230 205,223 206,218 207,213 208,208 209,205 210,202 211,199 212,197 213,195 214,194 215,193 216,192 217,192 218,193 219,195 220,196 221,199 222,201 223,205 224,209 225,214 226,219 227,226 228,234 229,244 230,257 231,273 232,296 233,320 235,313 236,283 237,263 238,248 239,236 240,226 241,218 242,211 243,205 244,200 245,196 246,192 247,190 248,187 249,186 250,184 252,184 253,185 254,187 255,189 256,192 257,196 258,200 259,206 260,213 261,221 262,231 263,244 264,262 265,288 266,320 268,320 269,286 270,259 271,227 272,215 273,206 274,199 275,192 276,187 277,182 278,179 279,176 280,174 281,172 282,171 284,171 285,172 286,174 287,179 288,184 289,189 290,195 291,203 292,214 293,227 294,245 295,271 296,319 297,320 298,305 299,262 300,237 301,218 302,205 303,193 304,184 305,171 306,165 307,161 308,158 309,155 310,153 311,152 312,151 313,151 314,152 315,154 316,156 317,160 318,164 319,170 320,177 321,199 322,215 323,239 324,280 325,320 326,289 327,240 328,212 329,193 330,178 331,166 332,156 333,148 334,141 335,136 336,131 337,127 338,124 339,120 340,119 341,119 342,119 343,121 344,123 345,126 346,131 347,137 348,145 349,155 350,170 351,191 352,226 353,320 354,258 354,200 355,168 356,146 357,129 358,115 359,103 360,93 361,84 362,76 363,69 364,63 365,58 366,52 367,48 368,44 369,40 370,37 371,34 372,29 373,27 374,25 375,23 376,22 377,21 378,21 379,20 380,20 381,20 382,21 383,21 384,22 385,23 386,25 387,27 388,29 389,34 390,37 391,40 392,44 393,48 394,52 395,58 396,63 397,69 398,76 399,84 400,93 401,103 402,115 403,129 404,146 405,168 406,200 406,258 407,320 408,226 409,191 410,170 411,155 412,145 413,137 414,131 415,126 416,123 417,121 418,119 419,119 420,119 421,120 422,124 423,127 424,131 425,136 426,141 427,148 428,156 429,166 430,178 431,193 432,212 433,240 434,289 435,320 436,280 437,239 438,215 439,199 440,187 441,170 442,164 443,160 444,156 445,154 446,152 447,151 448,151 449,152 450,153 451,155 452,158 453,161 454,165 455,171 456,177 457,184 458,205 459,218 460,237 461,262 462,305 463,320 464,319 465,271 466,245 467,227 468,214 469,203 470,195 471,189 472,184 473,179 474,174 475,172 476,171 477,171 478,171 479,172 480,174 481,176 482,179 483,182 484,187 485,192 486,199 487,206 488,215 489,227 490,241 491,286 492,320 494,320 495,288 496,262 497,244 498,231 499,221 500,213 501,206 502,200 503,196 504,192 505,189 506,187 507,185 508,184 510,184 511,186 512,187 513,190 514,192 515,196 516,200 517,205 518,211 519,218 520,226 521,236 522,248 523,263 524,283 525,320 527,320 528,296 529,273 530,257 531,244 532,234 533,226 534,219 535,214 536,209 537,205 538,201 539,199 540,196 541,195 542,194 543,192 544,192 545,193 546,194 547,195 548,197 549,199 550,202 551,205 552,208 553,213 554,218 555,223 556,230 557,237 558,246 559,270 560,287 561,310 562,320 565,320 566,304 567,284 568,269 569,257 570,247 571,239 572,232 573,227 574,222 575,217 576,213 577,207 578,205 579,203 580,201 581,200 582,199 583,198 585,198 587,198 588,199 589,200 590,201 591,202 592,204 593,208 594,211 595,214 596,217 597,221 598,225 599,229 600,234 601,240 602,246 603,253 604,262 605,271 606,283 607,297 608,315 609,320 612,320 614,305 615,290 616,279 617,269 618,261 619,254 620,247 621,242 622,237 623,233 624,229 625,226 626,222 627,217 628,215 629,213 630,211 631,209 632,208 633,206 634,205 635,204 636,203 637,202 638,202 639,201 640,201 642,200 644,200 645,201 647,201 648,202 650,203 651,204 653,205 654,206 655,207 656,208 657,209 658,210 659,212 660,214 661,216 662,217 663,219 664,220 665,222 666,224 667,226 668,228 669,230 670,232 671,234 672,236 673,238 674,241 675,243 676,245 677,248 678,253 679,256 680,259 681,262 682,265 683,268 684,271 685,275 686,278 687,282 688,285 689,289 690,293 691,297 692,301 693,306 694,315 695,320 720,320"/>
+    <line x1="368" y1="42.5" x2="368" y2="60" stroke="#1a1f2b" stroke-width="1.2"/>
+    <line x1="392" y1="42.5" x2="392" y2="60" stroke="#1a1f2b" stroke-width="1.2"/>
+    <text x="380" y="74" font-size="14" text-anchor="middle">HPBW 6.35°</text>
+    <line x1="407" y1="320" x2="407" y2="300" stroke="#5b6472" stroke-width="1.2"/>
+    <text x="418" y="298" font-size="13" fill="#5b6472">first null 7.181° = asin(λ/Nd)</text>
+  </svg>
+  <div class="box rule"><p class="small"><em class="term">SLL (sidelobe level)</em>: sinc limit <em class="term">−13.26 dB</em>;
+    the finite N = 16 array measures <em class="term">−13.15 dB</em> (+0.11 dB — denominator N·sin(ψ/2), not Nψ/2). Both honest: limit vs hardware.
+    And: <em class="term">more elements do NOT lower the sidelobes</em> — only the weight <em>shape</em> does (§2.4).</p></div>
+</section>
+
+<!-- 17 · grating lobes -->
+<section class="slide">
+  <div class="kicker">2.3 Grating lobes</div>
+  <h2>The AF repeats every 2π of ψ — d &gt; λ/2 lets a replica into the sky</h2>
+  <svg viewBox="0 0 760 300" width="100%">
+    <rect x="230" y="20" width="300" height="115" fill="#eef2f7"/>
+    <line x1="80" y1="135" x2="680" y2="135" stroke="#1a1f2b" stroke-width="1.5"/>
+    <path d="M375 135 L 380 45 L 385 135 Z" fill="#0f62fe"/>
+    <path d="M75 135 L 80 45 L 85 135 Z" fill="#9db8e8"/>
+    <path d="M675 135 L 680 45 L 685 135 Z" fill="#9db8e8"/>
+    <text x="380" y="152" font-size="13" text-anchor="middle">0</text>
+    <text x="230" y="152" font-size="13" text-anchor="middle">−1</text>
+    <text x="530" y="152" font-size="13" text-anchor="middle">+1</text>
+    <text x="80" y="152" font-size="13" text-anchor="middle">−2</text>
+    <text x="680" y="152" font-size="13" text-anchor="middle">+2</text>
+    <text x="712" y="140" font-size="14">u = sin θ</text>
+    <text x="380" y="35" font-size="13" text-anchor="middle" fill="#5b6472">d = λ/2, broadside: replicas at u = ±λ/d = ±2 — safely outside |u| ≤ 1</text>
+    <rect x="230" y="170" width="300" height="115" fill="#eef2f7"/>
+    <line x1="80" y1="285" x2="680" y2="285" stroke="#1a1f2b" stroke-width="1.5"/>
+    <path d="M481 285 L 486 195 L 491 285 Z" fill="#0f62fe"/>
+    <path d="M250 285 L 255 195 L 260 285 Z" fill="#b3261e"/>
+    <text x="486" y="192" font-size="13" text-anchor="middle" fill="#0f62fe">steered: u₀ = sin 45° = 0.707</text>
+    <text x="255" y="192" font-size="13" text-anchor="middle" fill="#b3261e">replica at u₀ − λ/d = −0.831 — INSIDE</text>
+    <line x1="255" y1="255" x2="486" y2="255" stroke="#5b6472" stroke-width="1.2"/>
+    <text x="370" y="250" font-size="13" text-anchor="middle" fill="#5b6472">spacing λ/d = 1.54 (d = 0.65λ)</text>
+    <text x="380" y="299" font-size="13" text-anchor="middle" fill="#b3261e">sin θ_g = sin θ₀ − λ/d → θ_g = −56.24°, full height</text>
+  </svg>
+  <div class="box trap"><p><em class="term">Spatial aliasing.</em> Elements sample the wavefront; d &gt; λ/2 is
+    under-sampling; the grating lobe is the alias — same height, wrong direction. (Yes, DSP — digital signal processing — students: exactly Nyquist.)</p></div>
+</section>
+
+<!-- 18 · grating budget -->
+<section class="slide">
+  <div class="kicker">2.3 The d &gt; λ/2 crime</div>
+  <h2>The spacing budget — and when designers sin anyway</h2>
+  <div class="math" style="font-size:3.8vh">d &lt; λ / (1 + |sin θ₀|)</div>
+  <ul>
+    <li>Scan to ±90° → back to d = λ/2. Scan only to ±45° → d<sub>max</sub> = 0.586λ = <em class="term">17.56 mm</em> for the course array.</li>
+    <li>Hour 3 animates d = 0.65λ: onset at scan <em class="term">32.6°</em>; steered 45°, the lobe stands at
+      <em class="term">−56.24°</em> at full height — the array cannot tell −56° from +45°.</li>
+  </ul>
+  <div class="box">
+    <p class="small">War story: a harbor array, spacing opened past λ/2 to stretch aperture; boresight commissioning flawless.
+    Night shift, weeks later: inbound contact at −55°, nothing on camera — the ferry at +45° was the contact; the array reported
+    its alias. Fix: not software (you cannot filter an alias after sampling) — masts moved 3 mm each.</p>
+  </div>
+  <div class="box rule"><p class="small">Deliberate sinners: narrow scan sectors (small θ₀ in the budget), element patterns
+    trusted to sit on the grating angle (§2.5). Automotive radars do it daily. The crime is not d &gt; λ/2 —
+    it is doing it <em class="term">without the budget line</em>.</p></div>
+</section>
+
+<!-- 19 · tapers are windows -->
+<section class="slide">
+  <div class="kicker">2.4 Tapers are windows</div>
+  <h2>The array factor IS the DFT of the weights — the DSP homecoming</h2>
+  <div class="math">AF(ψ) = Σ<sub>n</sub> w<sub>n</sub> e<sup>jnψ</sup> &nbsp;=&nbsp; DFT of w, read at ψ = kd·sin θ</div>
+  <ul>
+    <li>Uniform weights = rectangular window = −13 dB leakage. <em class="term">Sidelobes are spectral leakage in space.</em></li>
+    <li>Hour 3 proves it with one <span class="mono">np.fft.fft</span> call: agreement to 4.5×10⁻¹⁴.</li>
+    <li>So shop for windows: raised cosine (Hann): −31.5 dB, but HPBW ×1.53. <em class="term">Chebyshev</em> (Dolph 1946):
+      for a chosen SLL, the <em>narrowest possible</em> main lobe — all sidelobes at exactly the spec, equal ripple
+      (lecture 8's polynomial, same bargain).</li>
+  </ul>
+  <div class="box rule"><p>One call: <span class="mono">scipy.signal.windows.chebwin(16, at=30)</span> —
+    its equal-ripple floor is the homework's second referee.</p></div>
+  <p class="small muted" style="margin-top:1vh">(DFT = discrete Fourier transform.)</p>
+</section>
+
+<!-- 20 · taper trade -->
+<section class="slide">
+  <div class="kicker">2.4 The taper trade, measured</div>
+  <h2>17 dB of quiet costs 26% of beamwidth and 0.65 dB of gain</h2>
+  <svg viewBox="0 0 760 360" width="100%" style="max-height:42vh">
+    <line x1="40" y1="320" x2="720" y2="320" stroke="#1a1f2b" stroke-width="1.5"/>
+    <line x1="40" y1="20" x2="40" y2="320" stroke="#1a1f2b" stroke-width="1.5"/>
+    <line x1="40" y1="118.6" x2="720" y2="118.6" stroke="#5b6472" stroke-width="1" stroke-dasharray="5 5"/>
+    <line x1="40" y1="245" x2="720" y2="245" stroke="#5b6472" stroke-width="1" stroke-dasharray="5 5"/>
+    <text x="726" y="123" font-size="13" fill="#5b6472">−13.15</text>
+    <text x="726" y="249" font-size="13" fill="#5b6472">−30</text>
+    <text x="40" y="340" font-size="13" text-anchor="middle">−90°</text>
+    <text x="380" y="340" font-size="13" text-anchor="middle">0°</text>
+    <text x="720" y="340" font-size="13" text-anchor="middle">+90°</text>
+    <text x="34" y="25" font-size="13" text-anchor="end">0</text>
+    <text x="34" y="324" font-size="13" text-anchor="end">−40</text>
+    <polyline fill="none" stroke="#0f62fe" stroke-width="1.4" points="40,320 64,320 66,315 70,293 74,278 78,265 82,253 86,241 90,232 94,224 98,217 102,210 106,206 110,203 114,201 118,200 122,202 126,205 130,211 134,220 137,233 141,254 145,290 147,320 152,315 154,283 156,262 158,246 160,234 162,225 164,217 166,211 168,204 170,201 172,199 175,198 178,199 180,201 182,205 184,210 186,222 188,232 190,247 192,269 194,304 196,320 199,310 201,270 203,237 205,223 207,213 209,205 211,199 213,195 215,193 217,192 219,195 221,199 223,205 225,214 227,226 229,244 231,273 233,320 235,313 237,263 239,236 241,218 243,205 245,196 247,190 249,186 252,184 254,187 256,192 258,200 260,213 262,231 264,262 266,320 269,286 271,227 273,206 275,192 277,182 279,176 281,172 284,171 286,174 288,184 290,195 292,214 294,245 296,319 298,305 300,237 302,205 304,184 306,165 308,158 310,153 312,151 314,152 316,156 318,164 320,177 322,215 324,280 326,289 328,212 330,178 332,156 334,141 336,131 338,124 340,119 342,119 344,123 346,131 348,145 350,170 352,226 354,258 355,168 357,129 359,103 361,84 363,69 365,58 367,48 369,40 371,34 373,27 375,23 377,21 379,20 381,20 383,21 385,23 387,27 389,34 391,40 393,48 395,58 397,69 399,84 401,103 403,129 405,168 406,258 408,226 410,170 412,145 414,131 416,123 418,119 420,119 422,124 424,131 426,141 428,156 430,178 432,212 434,289 436,280 438,215 440,187 442,164 444,156 446,152 448,151 450,153 452,158 454,165 456,177 458,205 460,237 462,305 464,319 466,245 468,214 470,195 472,184 474,174 476,171 478,171 480,174 482,179 484,187 486,199 488,215 490,241 492,320 495,288 497,244 499,221 501,206 503,196 505,189 507,185 510,184 512,187 514,192 516,200 518,211 520,226 522,248 524,283 526,320 528,296 530,257 532,234 534,219 536,209 538,201 540,196 542,194 544,192 546,194 548,197 550,202 552,208 554,218 556,230 558,246 560,287 562,320 566,304 568,269 570,247 572,232 574,222 576,213 578,205 580,201 582,199 585,198 588,199 590,201 592,204 594,211 596,217 598,225 600,234 602,246 604,262 606,283 608,315 610,320 614,305 616,279 618,261 620,247 622,237 624,229 626,222 628,215 630,211 632,208 634,205 636,203 638,202 640,201 644,200 648,202 652,204 656,208 660,214 664,220 668,228 672,236 676,245 680,259 684,271 688,285 692,301 695,320 720,320"/>
+    <polyline fill="none" stroke="#b3261e" stroke-width="1.6" points="40,320 74,320 76,317 80,305 84,291 88,282 92,274 96,266 100,259 104,254 108,250 112,247 116,245 120,245 124,247 128,251 132,257 134,264 137,273 140,285 143,303 146,320 156,320 158,305 161,284 164,270 167,260 168,254 170,250 172,248 174,246 176,245 178,245 180,247 182,249 184,255 186,262 188,270 190,281 192,295 194,317 196,320 203,310 205,290 207,275 209,265 211,257 213,251 215,248 217,245 219,245 221,247 223,251 225,257 227,266 229,278 231,296 233,320 236,320 240,310 242,287 244,271 246,261 248,253 250,248 252,246 253,245 255,247 257,251 259,258 261,269 263,284 265,308 267,320 271,320 273,295 275,275 277,262 279,253 281,248 283,245 285,246 287,251 289,260 291,273 293,293 295,320 300,320 302,295 304,265 306,254 308,248 310,245 312,246 314,251 316,261 318,278 320,308 321,320 325,305 327,274 329,257 331,247 333,245 335,251 337,269 338,320 340,320 341,277 343,220 345,185 347,158 349,137 351,119 353,104 355,85 357,74 359,65 361,56 363,49 365,43 367,37 369,33 371,29 373,24 375,22 377,21 379,20 381,20 383,21 385,22 387,24 389,29 391,33 393,37 395,43 397,49 399,56 401,65 403,74 405,85 407,104 409,119 411,137 413,158 415,185 417,220 419,277 420,320 422,288 424,258 426,247 428,245 430,251 432,264 434,287 436,320 440,308 442,278 444,261 446,251 448,246 450,245 452,248 454,254 456,265 458,282 460,320 466,308 468,282 470,266 472,255 474,249 476,245 478,246 480,250 482,257 484,268 486,284 488,308 490,320 495,308 497,284 499,269 501,258 503,251 505,247 507,246 508,246 510,248 512,253 514,261 516,271 518,287 520,310 522,320 528,308 530,286 532,272 534,261 536,254 538,249 540,246 542,245 544,246 546,249 548,254 550,261 552,270 554,282 556,299 558,320 566,317 568,295 570,281 572,270 574,262 576,253 578,249 580,247 582,245 585,245 587,247 589,249 591,252 593,260 595,266 597,274 599,284 601,297 603,314 605,320 615,319 617,303 619,290 621,281 623,273 625,266 627,259 629,255 631,252 633,250 635,248 637,246 639,246 641,245 644,245 647,246 650,248 653,251 656,254 659,257 662,263 665,268 668,274 671,280 674,287 677,294 680,305 683,314 685,320 720,320"/>
+    <text x="600" y="45" font-size="15" fill="#0f62fe">uniform</text>
+    <text x="600" y="68" font-size="15" fill="#b3261e">Chebyshev −30 dB</text>
+  </svg>
+  <div class="box rule"><p class="small">Measured: HPBW 6.359° → 7.980° (×<em class="term">1.2550</em>), directivity 12.04 → 11.39 dBi
+    (−<em class="term">0.65 dB</em>), SLL −13.15 → <em class="term">−30.00 exactly</em>. Sidelobes are cheap; beamwidth is precious.
+    The homework's drone (echo −17.8 dB): <em class="term">below</em> a −13 dB floor, <em class="term">12 dB proud</em> of a −30 dB floor.</p></div>
+</section>
+
+<!-- 21 · steering -->
+<section class="slide">
+  <div class="kicker">2.5 Steering</div>
+  <h2>Steering is linear phase — and it is not free</h2>
+  <div class="math">phase of element n: −kd·n·sin θ₀ &nbsp;→&nbsp; ψ → kd(sin θ − sin θ₀): the whole anatomy translates to θ₀</div>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box"><p><em class="term">Broadening</em></p><p class="small muted">aperture foreshortens: 24 cm seen from 45° is 17 cm →
+      ×1/cos θ₀. Measured: 6.359° → 9.025° (×1.4194; exact arcsin form beats 1/cos's 1.4142)</p></div>
+    <div class="box"><p><em class="term">Scan loss</em></p><p class="small muted">same foreshortening shrinks A<sub>e</sub>: gain ≈ ×cos θ₀
+      (−1.5 dB at 45°) — before the element pattern's own droop</p></div>
+    <div class="box"><p><em class="term">Grating exposure</em></p><p class="small muted">§2.3's budget with sin θ₀ spent —
+      steer wide, shrink d</p></div>
+  </div>
+  <div class="box rule"><p>No motors, microseconds — this is the <em class="term">phased array</em>.
+    Lecture 16 does it to received snapshots in software and calls it beamforming.</p></div>
+</section>
+
+<!-- 22 · pattern multiplication -->
+<section class="slide">
+  <div class="kicker">2.5 Pattern multiplication</div>
+  <h2>Identical elements ⇒ the total pattern factors</h2>
+  <div class="math" style="font-size:4vh">E<sub>total</sub>(θ) = E<sub>element</sub>(θ) × AF(θ)</div>
+  <ul>
+    <li>The element is a <em class="term">slow envelope</em> (a patch: broad, ~cos θ); the AF is the fast structure.</li>
+    <li>Why grating-lobe sinners survive: the element envelope multiplies the alias down.</li>
+    <li>Why arrays of arrays work: a row of 16 becomes the "element" of a column of 16 —
+      the planar pattern is the product. <em class="term">One principle, three uses, zero new mathematics.</em></li>
+  </ul>
+  <svg viewBox="0 0 760 130" width="100%">
+    <path d="M40 110 Q 190 20 340 110" fill="none" stroke="#5b6472" stroke-width="2"/>
+    <text x="190" y="126" font-size="13" text-anchor="middle" fill="#5b6472">element: slow envelope</text>
+    <g stroke="#0f62fe" stroke-width="2" fill="none">
+      <path d="M420 110 L 445 40 L 470 110 L 480 85 L 490 110 L 500 88 L 510 110 L 520 91 L 530 110"/>
+    </g>
+    <text x="475" y="126" font-size="13" text-anchor="middle" fill="#0f62fe">AF: fast structure</text>
+    <text x="575" y="80" font-size="22">=</text>
+    <g stroke="#b3261e" stroke-width="2" fill="none">
+      <path d="M610 110 L 632 42 L 654 110 L 661 92 L 668 110 L 674 96 L 680 110 L 685 101 L 690 110"/>
+    </g>
+    <text x="655" y="126" font-size="13" text-anchor="middle" fill="#b3261e">product</text>
+  </svg>
+</section>
+
+<!-- 23 · sizing -->
+<section class="slide">
+  <div class="kicker">2.6 Sizing the aperture</div>
+  <h2>What separates two drones 100 m apart at 5 km?</h2>
+  <div class="box rule"><p>Required beam: 100/5000 = 0.02 rad = <em class="term">1.146°</em>.</p></div>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1.8vh; margin-top:1vh">
+    <div class="box" style="text-align:center"><p><em class="term">16-element ULA</em></p><p class="big">6.36°</p>
+      <p class="small muted">separates them only inside <em class="term">901 m</em></p></div>
+    <div class="box" style="text-align:center"><p><em class="term">the 33 dBi dish</em></p><p class="big">≈ 4.5°</p>
+      <p class="small muted">only inside 1.26 km — <em class="term">no</em></p></div>
+    <div class="box" style="text-align:center; background:#e8f0fe"><p><em class="term">what it takes</em></p><p class="big accent">D ≈ 1.5 m</p>
+      <p class="small muted">λ/θ at 10 GHz → ~100×100 = 10⁴ elements (≈45 dBi)</p></div>
+  </div>
+  <div class="box trap"><p>Lecture 1 bought <em class="term">detection</em> (33 dBi closes the drone link at 4.11 km).
+    Today's currency is <em class="term">resolution</em> — priced in beamwidths — and the same 33 dBi cannot pay.
+    Different questions, different apertures.</p></div>
+  <p class="small muted" style="margin-top:1.5vh">Tie-back in one line: this 16-element row = 12.04 dBi; a 16×16 sheet ≈ π·N·M → 29 dBi; matching the dish's 33 dBi wants ~635 elements. The full sheet is lecture 16's hardware.</p>
+</section>
+
+<!-- 24 · hour 2 recap -->
+<section class="slide">
+  <div class="kicker">2.7 Recap</div>
+  <h2>Hour 2 in three sentences</h2>
+  <ul class="big">
+    <li>The array factor is a <em class="term">DFT</em> with ψ = kd·sin θ — its anatomy: 6.35° beam, −13 dB sidelobes, nulls at λ/Nd.</li>
+    <li>Spacing past <em class="term">λ/(1+|sin θ₀|)</em> buys full-height aliases; tapers are windows — 17 dB of quiet for 26% of beamwidth.</li>
+    <li>Steering is <em class="term">linear phase</em>, taxed at 1/cos θ₀ — and resolution is priced in beamwidths, which is why drone-hunting apertures are big.</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Break. Hour 3 types all of it — then feeds np.sin degrees and grows 57 beams.</p>
+</section>
+
+<!-- 25 · hour 3 preview -->
+<section class="slide">
+  <div class="kicker">Hour 3 · Tools</div>
+  <h2>Live, in NumPy — every claim becomes a printed number</h2>
+  <ul>
+    <li>The AF engine in ten lines — HPBW 6.359°, SLL −13.1468 dB, first null 7.181°, measured vs closed forms</li>
+    <li>The homecoming, proved: <span class="mono">np.fft.fft</span> equals the AF to 4.5×10⁻¹⁴; <span class="mono">chebwin</span> lands −30.0000 dB exactly</li>
+    <li>Steering 0→45°: peaks on command, broadening ×1.419, clean at d = λ/2</li>
+    <li>The crime, animated: d = 0.65λ — onset 32.6°, the lobe walks to −56.238° (formula: −56.238°)</li>
+    <li>The deliberate bug — degrees into <span class="mono">np.sin</span>: 57 beautiful beams, spaced exactly π degrees</li>
+  </ul>
+  <p class="muted" style="margin-top:3vh">Then the homework brief: <em>predictions first</em> —
+  Q1 (the Chebyshev broadening factor) and Q2 (steering's price and the grating angle) are answered before you run.</p>
+</section>
+
+<footer id="counter"></footer>
+<div class="sec">Lecture 13 · Antennas &amp; Arrays · Hours 1–2</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1)) || 1) - 1, 0), slides.length - 1);
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides[i].classList.add('active');
+    location.hash = i + 1;
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+  }
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;  // don't hijack browser shortcuts
+    if (['ArrowRight',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => {           // live URL-hash edits jump too
+    const n = (parseInt(location.hash.slice(1)) || 1) - 1;
+    if (n !== i) show(n);
+  });
+  show(i);
+</script>
+</body>
+</html>

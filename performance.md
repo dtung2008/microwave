@@ -163,3 +163,112 @@ Headlines: f₀ = 59.7913 MHz (√(f₁f₂)); ladder 1270.3 nH / 5.578 pF serie
 Headlines: chosen plan high-side LO, IF = 321.4 MHz (Nyquist zone 6 of 100 MS/s);
 preselector n = 7, IF filter n = 4; v_min = 2.57 m/s at 60 dB clutter with −40/−70/−90
 dBc/Hz profile. War story set at S-band 2.9 GHz (X-band image can't reach 2.4 GHz Wi-Fi).
+
+## Lecture 11 — Amplifier design & the LNA (verified 2026-08-07, lesson-builder agent)
+
+Device: **real vendor file obtained** — Mini-Circuits `PGA-103+_S2P.zip` (browser
+UA + referer needed; bare curl 403s), file `PGA-103+_5V_Plus25DegC.s2p`, 660 pts,
+10 MHz–20 GHz. Gitignored; never committed. Offline fallback `demo_device()`
+(synthetic, labeled) verified in parallel. Noise parameters are instructor-modeled
+(no noise data in any .s2p), calibrated so NF(Γ_S=0) reproduces the datasheet 50 Ω
+NF column (0.5/0.5/0.6/0.9/1.2/1.5 dB at 0.05/0.4/1/2/3/4 GHz).
+
+| Path | Command | Criterion (syllabus) | Measured | Runtime |
+|---|---|---|---|---|
+| env | `python setup_check.py` | `SETUP OK` | `SETUP OK` (stability/circle/max_gain smoke K=1.656) | 0.9 s |
+| walkthrough | `python hour3_walkthrough.py` | bug (f₀-only stability) prints | passive \|Γ_L\|=0.40 → \|Γ_in\|=1.0613 at 10 MHz; finished amp \|Γ_in\|=1.175 at 16.15 GHz | 1.1 s |
+| starter | `--check` | "not implemented", exit 0 | as specified (both device paths) | 0.9 s |
+| solution | `--check` | K/Δ/μ vs independent path ≤ 1e-8 | dK **4.44e-16** (skrf `.stability`), dΔ **3.40e-16** (det), dμ **1.77e-14** (Edwards–Sinsky circle geometry; skrf 1.13.0 has no μ built-in) | 0.8 s |
+| solution | same | both stability criteria agree everywhere | K–Δ vs μ verdicts **660/660** (demo 120/120) | — |
+| solution | same | realized G_T within 0.1 dB of target in cascade | target MAG−2 = 8.2268 dB; cascade **+0.00e+00 dB** delta (matcher unitarity ~9e-16) | — |
+| solution | same | frontier monotone | G_T 10.227→8.794 dB, NF 1.599→0.820 dB, **0/0 violations** | — |
+| solution | `--plot` | 3 panels | `hw11_plots.png` (audit / Γ_S plane / frontier) | 1.5 s |
+
+Headlines (vendor, 2.4 GHz): K = 1.0973, |Δ| = 0.5499, **μ = 1.2254**; μ<1 bands
+**0.010–0.110 GHz** (worst 0.294) and **15.10–16.80 GHz** (worst 0.710); |S21|² =
+9.685 dB, MSG = 12.128 dB, **MAG = 10.227 dB**; Γ_MS = 0.413∠−160.8°; Γ_opt move
+costs **1.433 dB** of G_T for **0.78 dB** of NF; Q5 Friis (NF₂=6 dB): 2.3756 dB
+(gain end) vs 2.0446 dB (noise end), tie at NF₂≈8.7 dB. Datasheet typ gain
+11.0 dB@2 GHz / 8.1@3 GHz → ≈9.8 dB interpolated @2.4 vs file 9.685 dB — coheres
+(datasheet gain = |S21|²). Demo device: μ<1 band 0.20–1.60 GHz (worst 0.722),
+MAG = 18.001 dB, Γ_opt cost 0.663 dB. skrf 1.13 findings: `Network.stability` is
+K only (no μ anywhere in the wheel); `stability_circle(target_port, npoints)`
+returns loci (student circles vs loci: 8.9e-16); `max_gain` silently switches
+MAG↔MSG at K=1 (mirrored in `max_gain_db` spec); `nf_circle` exists but requires
+Network noise data — unusable with s2p-only files, so noise circles are hand-rolled.
+
+## Lecture 9 — Filters II: distributed (verified 2026-08-07, lesson-builder agent)
+
+| Path | Command | Criterion (syllabus) | Measured | Runtime |
+|---|---|---|---|---|
+| env | `python setup_check.py` | `SETUP OK` | `SETUP OK` (γ-explicit line + coupled Z→S smoke) | <1 s |
+| starter | `--check` | "not implemented", exit 0 | toolkit g-check prints; 3× "not implemented" | 0.4 s |
+| solution | `--check` | stub LPF within 0.01 dB of theory at f₀ | **−0.500000 dB** (Δ<1e-6); sweep vs closed form 2.84e-14; Kuroda equivalence 6.7e-16 | 2.8 s |
+| solution | same | BPF meets ripple/BW in ideal sweep | IL(f₀) 0.0000 dB; 0.5-dB BW **9.83%** vs 10% designed (J-inverter mapping physics — reconciled in ANSWERS Q4) | — |
+| solution | same | reentrant passband within 1% | **7.2000 GHz, 0.000% error** | — |
+| solution | same | ideal-vs-EM deltas quoted | center −26 MHz (−1.08%), all tagged **[PLACEHOLDER]** pending real openEMS export | — |
+| walkthrough | `python hour3_walkthrough.py` | 2f₀-sweep bug prints | "ship it" 52.8 dB → honest sweep 0.0 dB at 7.20 GHz | 1.2 s |
+
+Headlines: stub LPF 81.32/129.81/45.59 Ω λ/8 stubs; coupled BPF Z0e/Z0o =
+70.60/39.24 (ends), 56.64/44.77 (interior) — matches Pozar Ex 8.8 to 5e-5 Ω;
+Akhtarzad dimensions ends w 0.931/s 0.087 mm. Deviations: EM case study is a
+loudly-labeled placeholder (openEMS not installed); coupled_dims has no in-venv
+truth referee (round-trip 1e-15; quasi-static caveat taught as the lecture's
+own thesis); 9.83% vs 10% BW kept as course content rather than padding Δ.
+
+## Lecture 10 — Noise & nonlinearity (verified 2026-08-07, lesson-builder agent)
+
+| Path | Command | Criterion (syllabus) | Measured | Runtime |
+|---|---|---|---|---|
+| env | `python setup_check.py` | `SETUP OK` | `SETUP OK` (Friis + IM3-bin smoke) | 0.9 s |
+| walkthrough | `python hour3_walkthrough.py` | deterministic; dB-Friis bug caught | byte-identical reruns; bugged 1.6470 vs true 2.3387 dB, attenuator invariant convicts | 0.9 s |
+| starter | `--check` | "not implemented", exit 0 | as specified | 0.14 s |
+| solution | `--check` | cascade vs hand chains ≤ 0.01 dB NF / 0.1 dB IIP3 | deltas **0.0000 / 0.0000** | 0.14 s |
+| solution | same | two-tone slope referees IIP3 | slope **3.0000**; extrapolated IIP3 d = −0.0023 dBm | — |
+| solution | same | ordering verdicts | 20 orderings, NF 2.0378→14.9267 dB; best-SFDR ≠ best-MDS; "obvious" chain rank 9 | — |
+| solution | same | range delta via lecture-1 engine | best 4.339 vs worst 2.066 km, ratio **2.1000** = 10^(ΔNF/40) exactly | — |
+
+Headlines: element set = task defaults (worked unmodified); all orderings share
+G = 39.5 dB; best MDS −111.94 dBm; SFDR@1 MHz best 69.51 dB; Y-factor demo
+recovers NF 1.5000 from ENR 15 dB. Toolkit re-provides the hw1 radar engine
+(same names/contracts) per the no-cross-lesson-imports rule.
+
+## Lecture 13 — Antennas & arrays (verified 2026-08-07, lesson-builder agent)
+
+| Path | Command | Criterion (syllabus) | Measured | Runtime |
+|---|---|---|---|---|
+| env | `python setup_check.py` | `SETUP OK` | `SETUP OK` (AF-vs-geometric-series + chebwin smoke) | 0.4 s |
+| starter | `--check` | "not implemented", exit 0 | as specified (inherited starter KEPT after audit; 3 surgical fixes) | 0.4 s |
+| solution | `--check` | uniform SLL within 0.1 dB of −13.26 | −13.1468 dB = exact finite-N closed form (Δ 3.8e-08); the 0.115 dB vs the −13.26 *asymptote* is finite-N physics, taught (see deviation) | 1.2 s |
+| solution | same | beamwidth within 1% of closed form | broadside 0.169%, steered-45° 0.170% | — |
+| solution | same | Chebyshev −30 ± 0.2 dB | **−30.00 dB** (chebwin guarantee Δ −0.000) | — |
+| solution | same | grating onset to 0.1° | Δ **0.0002°** (−56.238°) | — |
+| walkthrough | `python hour3_walkthrough.py` | degrees-into-sin bug plots | FFT≡AF to 4.5e-14; bug comb spacing π | 2.6 s |
+
+Headlines: uniform 16-el HPBW 6.359°, D 12.041 dBi (= N to 2e-10); Chebyshev −30
+broadening ×1.2550, directivity cost 0.647 dB; scene margins uniform +2.69 dB
+(buried) vs Chebyshev +12.54 dB (revealed); steer-45° broadening ×1.4194;
+16×16 ≈ 29.05 dBi vs the 33 dBi dish (~635 elements). Deviations: SLL criterion
+read against the exact finite-N value (no correct N=16 implementation can hit the
+asymptote ±0.1 dB); scene geometry fixed (drone 10°→15°, 3→3.5 km) so the taper
+story has an answer; chebwin's <45 dB UserWarning filtered with explanation.
+
+## Lecture 14 — Radar equation & detection (verified 2026-08-07, lesson-builder agent)
+
+| Path | Command | Criterion (syllabus) | Measured | Runtime |
+|---|---|---|---|---|
+| env | `python setup_check.py` | `SETUP OK` | `SETUP OK` (detection smoke) | 0.9 s |
+| walkthrough | `python hour3_walkthrough.py` | power-vs-amplitude bug prints both P_fa | bugged **1.1e-3** vs honest 2e-6 on same 10⁶ draws (√P_fa exactly) | 1.3 s |
+| starter | `--check` | "not implemented", exit 0 | as specified | 0.4 s |
+| solution | `--check` | P_fa within 3σ binomial of 1e-6 at 10⁶ trials | threshold exact; 0 of 10⁶ (expected 1, 3σ ±3e-6) — inside; 1e-2/1e-3 grids on-design | 0.5 s |
+| solution | same | MC P_d within 0.5 dB of Albersheim (6–16 dB) | worst in-envelope gap **0.16 dB**; vs exact Marcum \|ΔP_d\| ≤ 0.0021 | — |
+| solution | same | CFAR on 3 scenes + masking | clean 0 FA; clutter-edge masks the 995 target; two-drones masks the weaker (solo control detects) | — |
+
+Headlines: T(1e-6) = 3.7169 (11.40 dB over mean noise); Albersheim (0.9, 1e-6) =
+13.11 vs exact 13.18 dB; honest ranges shrink ×0.9934 (drone 4.11→4.08 km; the
+13 dB hand-wave delivered P_d = 0.8744 — it hid meaning, not range); Swerling-1
++8 dB → drone ~2.6 km; CFAR loss 2.01 dB (N=16) → 0.97 (N=32); clutter-edge FA
+elevation 13× design (800-edge ensemble at 1e-3 — single scene at 1e-6 is
+statistically blind, a forced design choice). CA-CFAR interface for L15:
+`ca_cfar(power_profile, n_train, n_guard, pfa) -> (detections, threshold)`,
+per-side counts, strict >, edge-truncating with α recomputed.
