@@ -272,3 +272,48 @@ elevation 13× design (800-edge ensemble at 1e-3 — single scene at 1e-6 is
 statistically blind, a forced design choice). CA-CFAR interface for L15:
 `ca_cfar(power_profile, n_train, n_guard, pfa) -> (detections, threshold)`,
 per-side counts, strict >, edge-truncating with α recomputed.
+
+## Lecture 15 — FMCW, Doppler & micro-Doppler (verified 2026-08-07, lesson-builder agent)
+
+| Path | Command | Criterion (syllabus) | Measured | Runtime |
+|---|---|---|---|---|
+| env | `python setup_check.py` | `SETUP OK` | `SETUP OK` (dechirp smoke: 60 m → bin 120) | <1 s |
+| walkthrough | `python hour3_walkthrough.py` | no-window bug buries the drone, with numbers | no-window: 16.11 dB vs threshold 30.24 → buried; Hann: 17.73 vs 13.46 → detected | 1.1 s |
+| starter | `--check` | "not implemented", exit 0 | as specified | 1.3 s |
+| solution | `--check` | all planted targets within 1 range + 1 Doppler bin | worst **0.35 range / 0.04 Doppler bins**; 3 targets, 0 extras | 1.6 s |
+| solution | same | HERM spacing within 2% of N_b·f_rot | **200.000 Hz vs 200.0 → 0.000%** | — |
+| solution | same | Parseval through FFT chain | residual **0.0** | — |
+
+Headlines: waveform B = 300 MHz, T_c = 10 µs, N = 512 → ΔR 0.4997 m, v_unamb
+±97.34 m/s, Δv 0.3802 m/s, CPI 5.12 ms; T_c legal window [7.82, 12.98] µs;
+drone blades v_tip 69.12 m/s → ±35.5 kHz (unaliased by design — the spec's
+v_unamb line exists because of the blades); f_rot 100 Hz = 6000 rpm recovered;
+R–v coupling +46.8 mm at 20 m/s measured. Per-cell CFAR P_fa 1e-7 (map-size
+argument taught). Course-wide sign convention set: v = range rate, receding
+positive (L16 CPA inherits it).
+
+## Lecture 16 — Beamforming, DOA & collision avoidance (capstone) (verified 2026-08-07, lesson-builder agent)
+
+| Path | Command | Criterion (syllabus) | Measured | Runtime |
+|---|---|---|---|---|
+| env | `python setup_check.py` | `SETUP OK` (incl. pyargus) | `SETUP OK` | 1.5 s |
+| starter | `--check` | "not implemented" ×4, exit 0 | as specified | 0.14 s |
+| solution | `--check` | DOA within 0.5° of pyargus on identical snapshots | **0.000°** on all 6 comparisons (3 scenes × Bartlett/Capon) | 1.8 s |
+| solution | same | CPA error < 5 m on all intruders | worst **0.94 m** | — |
+| solution | same | alert truth table incl. correct non-alert | **5/5** (3 alerts + 2 non-alerts, incl. jammed scene) | — |
+| walkthrough | `python hour3_walkthrough.py` | few-snapshot MVDR bug + diagonal-loading fix | K=8: −114.45 dB at own target; +10 dB loading → +27.74 dB (honest 27.05) | 1.7 s |
+
+Headlines: 16-el ULA @77 GHz, HPBW 6.348°; resolution flip (predict-first):
+1.5 BW — beamscan resolves at every tested SNR (above the Rayleigh-style limit;
+the expected wrong prediction is the teaching point), MVDR flips at −12 dB;
+0.7 BW — beamscan never, MVDR flips at 0 dB. Jammer 40 dB over drone: beamscan
+reads jammer + its sidelobe (chain θ error 53.7°), MVDR recovers the drone at
+0.035°. pyargus API fully usable (DOA_Bartlett/DOA_Capon/corr_matrix_estimate;
+axis-referenced cos θ convention mapped and taught). Course wrap: the L1 block
+diagram closes with every box opened.
+
+## Full-course sweep (2026-08-07)
+
+All 16 lessons: complete file sets (script.en + script.zh-hant + slides + 9 lab
+files each) · setup_check / starter --check / solution --check all exit 0 ·
+all 16 hour-3 walkthroughs run clean headless · every .py compiles.
