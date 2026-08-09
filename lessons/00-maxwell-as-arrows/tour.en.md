@@ -12,19 +12,76 @@ divergence and a curl if pressed, and you passed the exam. What that course
 often does not leave behind is the ability to *read* Maxwell's equations — to
 look at a coax, a microstrip, a slot, a loop, and know which way every field
 points and where the power goes, before and without calculation. Lectures 1–16
-assume that ability in small doses. This chapter builds it deliberately, through
-six questions, each answered by hand and then confirmed by a number.
+assume that ability in small doses. This chapter builds it deliberately: §0.0
+states the four equations once, properly, in both their costumes; then six
+questions, each answered by hand and then confirmed by a number.
 
 **The cast** (you will meet them in order, and they return all course):
 
 | | Question | Why it exists |
 |---|---|---|
+| 0.0 | the four equations, stated | the protagonists — differential and integral forms, sources on the right, behavior on the left |
 | 0.1 | how fast does current travel? | three speeds hide in one ampere — untangling them is transmission-line theory's admission ticket |
 | 0.2 | what is a "flux," really? | one integral template serves J, B, D, Poynting, and the radar equation |
 | 0.3 | why does curl H have units A/m²? | the ∇ family always spends a 1/m — auditing Maxwell by units |
 | 0.4 | what does curl actually measure? | circulation density — and two flows that break your intuition on purpose |
 | 0.5 | can arrows alone solve a problem? | coax power flow in three sentences; the barber pole that breaks perpendicularity |
 | 0.6 | what fills the empty slot in Faraday's law? | magnetic current: absent in nature, indispensable in antenna engineering |
+
+---
+
+## 0.0 The protagonists — the four equations, stated once, properly
+
+Everything in this chapter (and this course) is commentary on four lines.
+Here they are in both costumes — the **differential form** (true at a point)
+and the **integral form** (true for any loop or closed surface you draw) —
+each with its plain-language reading, which the rest of the tour unpacks:
+
+| Name | Differential form | Integral form | Read as |
+|---|---|---|---|
+| Gauss (electric) | ∇·D = ρ | ∯ D·dA = Q_enc | E/D lines start on + charge, end on − charge |
+| Gauss (magnetic) | ∇·B = 0 | ∯ B·dA = 0 | B lines never end — no magnetic charge exists (§0.6) |
+| Faraday | ∇×E = −∂B/∂t | ∮ E·dl = −dΦ_B/dt | E circulates around *changing* magnetic flux, opposing it |
+| Ampère–Maxwell | ∇×H = J + ∂D/∂t | ∮ H·dl = I_enc + dΦ_D/dt | H circulates around current — real (J) or displacement (∂D/∂t) |
+
+**The cast of symbols**, with units (audited in §0.3):
+
+| Symbol | Name | Units |
+|---|---|---|
+| E | electric field | V/m |
+| D = εE | electric flux density | C/m² |
+| H | magnetic field | A/m |
+| B = μH | magnetic flux density | T = Wb/m² |
+| J | current density (§0.1–0.2; in a conductor J = σE) | A/m² |
+| ρ | charge density | C/m³ |
+
+The three material relations on the right of the symbol table — **D = εE,
+B = μH, J = σE** — are the *constitutive relations*: Maxwell's equations are
+deliberately material-blind, and ε, μ, σ are where the substance (substrate,
+ferrite, copper) plugs in. Lecture 5 lives in ε; lecture 5's loss lives in σ;
+§0.1's Drude model is where J = σE comes *from*.
+
+Three observations before we use them, each of which becomes a section:
+
+1. **The two columns say the same thing at different sizes.** The integral
+   forms count totals over loops and surfaces you choose; the differential
+   forms are those totals shrunk to a point, divided by area or volume — which
+   is why every ∇ costs a 1/m (§0.3) and why curl is circulation-per-area
+   (§0.4). Stokes and Gauss (the divergence theorem) are the two elevators
+   between the columns.
+2. **The right-hand sides are the sources; the left-hand sides are the field
+   behavior they compel.** Charge makes field lines end; current (or changing
+   D) makes them wrap; changing B makes E wrap the other way; and nothing
+   makes B lines end, ever. That is the entire content of the arrow rules of
+   §0.5 — the equations *are* the rules.
+3. **One slot is conspicuously empty.** Faraday's law has no magnetic-current
+   term partnering J, and Gauss-magnetic's zero is the reason. Whether the
+   symmetry can be rented anyway is §0.6's story.
+
+*(Notation: this course writes the field pair as (E, H) with the flux
+densities (D, B) — Pozar's convention, natural at material boundaries where
+tangential E, H are the continuous pair. Physics texts often prefer (E, B);
+nothing below depends on the choice.)*
 
 ---
 
