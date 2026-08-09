@@ -181,29 +181,57 @@ def fig06():
     save(fig, "fig06_lundquist.png")
 
 
-# --- fig07: divergence — the point-charge field and its two boxes -----------
+# --- fig07: divergence — 3-D geometry, and why the constancy is 3-D ---------
+def _cube_edges(ax, c, half, color, lw=1.8):
+    s = [-half, half]
+    for i in s:
+        for j in s:
+            ax.plot([c[0]+s[0], c[0]+s[1]], [c[1]+i]*2, [c[2]+j]*2,
+                    color=color, lw=lw)
+            ax.plot([c[0]+i]*2, [c[1]+s[0], c[1]+s[1]], [c[2]+j]*2,
+                    color=color, lw=lw)
+            ax.plot([c[0]+i]*2, [c[1]+j]*2, [c[2]+s[0], c[2]+s[1]],
+                    color=color, lw=lw)
+
+
 def fig07():
-    fig, ax = plt.subplots(figsize=(7.2, 5.4))
-    g = np.linspace(-4, 4, 21)
-    X, Y = np.meshgrid(g, g)
-    r2 = X**2 + Y**2 + 1e-9
-    mask = r2 > 0.5
-    ax.quiver(X[mask], Y[mask], (X / r2**1.0)[mask], (Y / r2**1.0)[mask],
-              color="#5b9bd5", scale=14, width=0.004)
-    for (cx, cy), half, color, label in [((0, 0), 1.0, "#c0504d",
-                                          "encloses charge: flux = 4π"),
-                                         ((0, 0), 2.6, "#c0504d", None),
-                                         ((3.0, 0), 0.6, "#4a7c3f",
-                                          "no charge inside: flux = 0")]:
-        ax.plot([cx - half, cx + half, cx + half, cx - half, cx - half],
-                [cy - half, cy - half, cy + half, cy + half, cy - half],
-                color=color, lw=2, label=label)
-    ax.scatter([0], [0], s=70, c="k", zorder=5)
-    ax.set_aspect("equal")
-    ax.axis("off")
-    ax.legend(loc="lower left", fontsize=9)
-    ax.set_title("E = r̂/r²: maximally 'diverging' to the eye, zero divergence\n"
-                 "off the charge — every enclosing box nets 4π, any size")
+    fig = plt.figure(figsize=(11.0, 4.6))
+    # left: the real 3-D geometry — radial field, two spherical shells of
+    # arrows (length falling as 1/r^2), an enclosing cube, a non-enclosing one
+    ax = fig.add_subplot(1, 2, 1, projection="3d")
+    for R, scale in ((1.0, 0.55), (2.0, 0.55 / 4)):
+        n = 90
+        # near-uniform points on the sphere (golden spiral)
+        k = np.arange(n) + 0.5
+        th = np.arccos(1 - 2 * k / n)
+        ph = np.pi * (1 + 5**0.5) * k
+        x, y, z = (R * np.sin(th) * np.cos(ph), R * np.sin(th) * np.sin(ph),
+                   R * np.cos(th))
+        ax.quiver(x, y, z, x / R * scale, y / R * scale, z / R * scale,
+                  color="#5b9bd5", lw=1, arrow_length_ratio=0.35)
+    _cube_edges(ax, (0, 0, 0), 1.5, "#c0504d")
+    _cube_edges(ax, (3.1, 0, 0), 0.6, "#4a7c3f")
+    ax.scatter([0], [0], [0], s=50, c="k")
+    ax.set_box_aspect((1.3, 1, 1))
+    ax.set_axis_off()
+    ax.set_title("the 3-D geometry: E = r̂/r², arrows weakening as 1/r²;\n"
+                 "red cube (6 faces) nets 4π, green cube nets 0", fontsize=10)
+    # right: the constancy is a 3-D fact — flux vs enclosing radius,
+    # 3-D sphere (area ~ r^2) vs a 2-D circle (perimeter ~ r)
+    ax2 = fig.add_subplot(1, 2, 2)
+    R = np.linspace(0.5, 4, 200)
+    ax2.plot(R, np.full_like(R, 4 * np.pi), "#c0504d", lw=2,
+             label="3-D: sphere area 4πR² × field 1/R² = 4π, any R")
+    ax2.plot(R, 2 * np.pi / R, "#5b9bd5", lw=2, ls="--",
+             label="same 1/R² field in a 2-D world: 2πR × 1/R² = 2π/R")
+    ax2.axhline(0, color="k", lw=0.5)
+    ax2.set_xlabel("enclosing radius R")
+    ax2.set_ylabel("net outward flux")
+    ax2.set_title("size-independence is the 3-D balance\n"
+                  "(in 2-D the divergence-free radial field is 1/r, not 1/r²)",
+                  fontsize=10)
+    ax2.legend(fontsize=8)
+    ax2.grid(True, alpha=0.3)
     save(fig, "fig07_divergence.png")
 
 

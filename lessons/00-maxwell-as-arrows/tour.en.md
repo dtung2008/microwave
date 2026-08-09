@@ -251,15 +251,31 @@ E = r̂/r², and integrate the flux through closed boxes numerically
 | cube at (3, 0, 0), charge outside | **−0.0000** |
 | shrinking box at (2, 0, 0): flux/volume | −3.5×10⁻⁸ → 0 |
 
-![the point-charge field and its two boxes](figures/fig07_divergence.png)
+![the 3-D geometry, and why the constancy is three-dimensional](figures/fig07_divergence.png)
 
-Read the table twice. The fan of arrows *looks* like it diverges everywhere —
+Read the table twice. The burst of arrows *looks* like it diverges everywhere —
 yet away from the charge the divergence is exactly zero: the geometric
 spreading of the lines is cancelled, precisely, by the 1/r² weakening of the
 field. Every line that enters a charge-free box also leaves it. All 4π of the
 outflow is concentrated *at the charge* — and the enclosing-box flux is 4π
 regardless of the box's size or shape. You have just discovered Gauss's law
 numerically: ∯D·dA = Q_enc, the integral twin of ∇·D = ρ.
+
+**Mind the dimension — this is genuinely a 3-D statement.** The boxes above
+are cubes and the flux was summed over all six *faces* (that is what
+`tour_numbers.py` computes); the figure's left panel shows the real geometry.
+The cancellation works because a sphere's *area* grows as r² while the field
+falls as 1/r² — so 1/r² is the unique radial falloff that is divergence-free
+off a **point** source in three dimensions. Change the source's shape and the
+balance re-tunes itself: around an infinite **line** of charge the enclosing
+surface grows like a cylinder's side (∝ r), so the divergence-free field is
+**1/r** — exactly the E between a coax's conductors (lecture 2, and §0.5's
+worked example); around an infinite charged **sheet**, the enclosing area
+doesn't grow at all, and the field is **constant**. Point → 1/r², line → 1/r,
+sheet → 1/r⁰: one law, three geometries — and the first of the three is why
+Friis's power density falls as 1/R² in lecture 1. (Beware the flat drawing:
+in a genuinely 2-D world the 1/r² field would *not* be divergence-free — its
+circle-flux is 2π/R, shrinking with size, as the figure's right panel shows.)
 
 The pairing to memorize, because §0.4 is about to complete it:
 
