@@ -27,6 +27,7 @@ questions, each answered by hand and then confirmed by a number.
 | 0.4 | what does curl actually measure? | circulation density — and two flows that break your intuition on purpose |
 | 0.5 | can arrows alone solve a problem? | coax power flow in three sentences; the barber pole that breaks perpendicularity |
 | 0.6 | what fills the empty slot in Faraday's law? | magnetic current: absent in nature, indispensable in antenna engineering |
+| 0.7 | how do these become tools instead of formulas? | the eight moves, the two cancellation pictures, and the study method |
 
 ---
 
@@ -471,6 +472,90 @@ coronal mass ejection sweeps past a spacecraft, the magnetometer trace fits
 the Lundquist rope, mission after mission.
 
 ![the force-free rope: curl B parallel to B](figures/fig06_lundquist.png)
+
+---
+
+## 0.7 Making the operators yours — the eight moves
+
+A confession this chapter should make explicit: if you have studied the proofs
+of the divergence theorem and Stokes' theorem "many times" and the feeling
+never arrived, the problem is not you and the cure is not another pass through
+the proofs. Fluency with operators is a *skill*, not a fact — it comes from
+repeated use on concrete fields, which is why every claim in this chapter
+lands as a number. Three things to know before lecture 1: how small the needed
+toolkit really is, why the two big theorems feel opaque (and the reframe that
+fixes it), and how to practice.
+
+**The toolkit is eight moves — this is ALL the vector calculus the course
+uses:**
+
+| # | Move | Where you met it |
+|---|---|---|
+| 1 | the three limit definitions: grad = steepest slope, div = outflow/volume, curl = circulation/area | §0.3, §0.4 |
+| 2 | evaluating them on concrete fields (Cartesian recipes; cylindrical/spherical when symmetry offers) | §0.3–0.5 |
+| 3 | the two null identities ∇·(∇×A) = 0 and ∇×(∇φ) = 0 — each with a physical face (why potentials exist; why charge is conserved) | continuity, §0.5 rule 1 |
+| 4 | the curl-of-curl identity ∇×(∇×A) = ∇(∇·A) − ∇²A (it yields Biot–Savart and the wave equation) | lecture 1 references |
+| 5 | divergence theorem + Stokes' theorem as *bookkeeping* (below) | §0.0's "elevators" |
+| 6 | the Green's-function moves: ∇(1/R) = −R̂/R², and the delta as a shrunk smeared source | §0.3's point charge |
+| 7 | the shrinking pillbox and straddling loop (boundary conditions at a conductor) | §0.5 rule 5 |
+| 8 | reading every result back as an arrow rule | §0.5 |
+
+Every derivation in Pozar's chapter 1 decomposes into these and nothing else.
+"Master vector calculus first" is over-scoped; master the eight moves *inside*
+the electromagnetics, on demand.
+
+**The two cancellation pictures** — the reframe that turns the big theorems
+from surprising facts into things you would have guessed. Hold the *limit
+definitions* (move 1) as the definitions, and:
+
+- **Divergence theorem:** tile the volume with tiny boxes. Every *interior*
+  face is an exit for one box and an entrance for its neighbor — those fluxes
+  **cancel in pairs**. The only faces without a partner are the outer skin.
+  "Sum of local outflows = outflow through the skin" is a telescoping sum,
+  almost a tautology.
+- **Stokes' theorem:** tile the drumhead with tiny loops. Every *interior*
+  edge is walked twice, in opposite directions — cancels. Only the rim
+  survives. "Sum of local circulations = circulation around the rim."
+
+If the theorems ever felt mysterious, it was because the coordinate formula
+was playing the role of definition; demote it to what it is — an evaluation
+recipe — and the theorems become bookkeeping.
+
+**The practice method** (it is this chapter's own method, named):
+
+1. **Keep a field zoo.** Uniform field · r̂/r² (point source) · φ̂/r (wire) ·
+   the shear (ky, 0, 0) · the helix. Five fields. Every new operator,
+   identity, or claim gets tested against the whole zoo — by hand where easy,
+   by fifteen lines of numpy where not (`tour_numbers.py` is the zoo's first
+   cage; extend it freely).
+2. **Predict, then verify.** Commit to an answer *before* computing — "curl
+   is zero here; nonzero along ŷ there; bigger near the wire" — then run it.
+   Being wrong and finding out why is where the feeling forms. (This is the
+   same predict-first discipline the course's homework imposes on you;
+   apply it to yourself.)
+3. **One physical anchor per identity.** ∇·(∇×) = 0 *is* charge conservation;
+   Stokes *is* Ampère's loop law; the pillbox *is* the surface-charge
+   boundary condition. Anchored identities get recalled; bare ones evaporate.
+4. **Micro-stepping is the learning, not a detour.** Breaking a derivation
+   into many tiny steps feels like divergence — it isn't, because the steps
+   come from the finite set above, so each breakdown makes the next one
+   shorter (chunking, as in sight-reading music). About five derivations at
+   full resolution suffice: Gauss/point charge (§0.3), Faraday on a loop,
+   Biot–Savart from the magnetostatic pair, the wave equation from
+   curl-of-curl, and the conductor boundary conditions. After those, nothing
+   in chapter 1 of any text contains a move you haven't made.
+
+**Where to go when this chapter isn't enough:**
+
+- [R41] Schey, *Div, Grad, Curl, and All That* — written precisely for this
+  gap: the operators taught through electrostatics, limit-definitions first,
+  ~150 informal pages. The standard prescription, and a weekend read.
+- [R42] Feynman Lectures vol. II, chs. 2–3 (free online) — "how a physicist
+  holds these operators in his head," with heat flow as the concrete field.
+- [R43] Purcell & Morin, *Electricity and Magnetism*, ch. 2 — the most
+  picture-driven div/curl treatment in print.
+- [R44] 3Blue1Brown, "Divergence and curl" — twenty minutes of the
+  fluid-flow visual; watch before Schey.
 
 ---
 

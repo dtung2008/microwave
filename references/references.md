@@ -97,3 +97,14 @@ institutional access; never link mirrors). Verified 2026-08-04 where a link is g
   cited by lecture 5.)
 - [R40] E. J. Wilkinson, "An N-Way Hybrid Power Divider," *IRE Trans. MTT* 8(1):116–118,
   1960. (Cited by lecture 7.)
+- [R41] H. M. Schey, *Div, Grad, Curl, and All That: An Informal Text on Vector
+  Calculus*, 4th ed., W. W. Norton, 2005. (Chapter 0's prescription for operator
+  fluency — the operators taught through electrostatics, limit definitions first.)
+- [R42] R. P. Feynman, R. B. Leighton, M. Sands, *The Feynman Lectures on Physics*,
+  Vol. II, chs. 2–3. **Free (Caltech-hosted):**
+  <https://www.feynmanlectures.caltech.edu/II_02.html>
+- [R43] E. M. Purcell and D. J. Morin, *Electricity and Magnetism*, 3rd ed., Cambridge
+  Univ. Press, 2013. (Ch. 2: the most picture-driven div/curl treatment in print.)
+- [R44] 3Blue1Brown, "Divergence and curl: the language of Maxwell's equations, fluid
+  flow, and more" (video). **Free:** <https://www.youtube.com/watch?v=rB83DpBJQsE>
+  (Cited by chapter 0.)
