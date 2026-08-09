@@ -44,6 +44,23 @@ each with its plain-language reading, which the rest of the tour unpacks:
 | Faraday | ∇×E = −∂B/∂t | ∮ E·dl = −dΦ_B/dt | E circulates around *changing* magnetic flux, opposing it |
 | Ampère–Maxwell | ∇×H = J + ∂D/∂t | ∮ H·dl = I_enc + dΦ_D/dt | H circulates around current — real (J) or displacement (∂D/∂t) |
 
+**Reading the integral-form shorthand.** The two Gauss rows integrate over a
+**closed** surface (∯ — a box, a balloon: anything with an inside), and the
+subscript **enc means "enclosed" by that surface**: Q_enc is the total charge
+inside it. The two curl rows walk a **closed loop** (∮) and integrate over any
+**open** surface spanning that loop (a drumhead with the loop as its rim):
+
+- **Φ_B = ∫ B·dA** — the magnetic flux through the drumhead (webers);
+- **Φ_D = ∫ D·dA** — the electric flux through it (coulombs);
+- **I_enc = ∫ J·dA** — the conduction current threading the loop (amperes) —
+  "enclosed" here meaning *piercing the drumhead*, linked through the loop
+  like a ring through a keyring.
+
+Loop direction and surface normal are tied by the right-hand rule (fingers
+around the loop, thumb along dA). §0.2 is devoted to what these ∫F·dA
+"flux" integrals mean; for now, read each one as "how much of the field
+passes through."
+
 **The cast of symbols**, with units:
 
 | Symbol | Name | Units |
