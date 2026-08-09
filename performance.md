@@ -317,3 +317,19 @@ diagram closes with every box opened.
 All 16 lessons: complete file sets (script.en + script.zh-hant + slides + 9 lab
 files each) · setup_check / starter --check / solution --check all exit 0 ·
 all 16 hour-3 walkthroughs run clean headless · every .py compiles.
+
+## Chapter 0 — Maxwell as Arrows (pre-course; verified 2026-08-09)
+
+| Path | Command | Criterion | Measured | Runtime |
+|---|---|---|---|---|
+| numbers | `python tour_numbers.py all` | deterministic; every quoted number reproduced | diff-identical reruns; drift 7.35e-5 m/s, τ 2.49e-14 s, signal 0.667c; shear circ/area −2.0000 at all loop sizes; vortex 2π any R; coax ∫E×H = 2.00000 W vs VI (Δ 6.9e-12); barber-pole pitches 90/45/18.4°; Lundquist curl residual ≤ 1.0e-4 | ~2 s |
+| figures | `python tour_figures.py` | all 6 regenerate | fig01–fig06 written (committed — content, not lab byproduct) | ~4 s |
+| compile | `py_compile` both .py | silence | silence | — |
+
+New chapter (user-requested 2026-08-09, option "Chapter 0 primer"): qualitative
+Maxwell — three speeds of current, flux as integral, ∇'s 1/m, curl as
+circulation density, the seven arrow rules (coax P = VI by Poynting), the
+barber-pole/Helmholtz caveat, magnetic current & force-free fields. Follows the
+optimizations `00-wind-tour` precedent: essay + reproducibility scripts +
+committed figures; no lab, no slides, English-only, numpy(+scipy Bessel) only.
+Syllabus preamble updated with the Chapter 0 pointer.

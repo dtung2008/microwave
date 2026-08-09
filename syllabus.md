@@ -58,6 +58,15 @@ FMCW white paper [R34], and open-access drone-detection literature [R28][R29][R3
 **Arc:** lectures 1–5 waves, lines & networks · 6–9 passive design · 10–12 the receiver ·
 13–16 radar & detection systems.
 
+**Chapter 0 (pre-course, optional):** [Maxwell as Arrows](lessons/00-maxwell-as-arrows/tour.en.md)
+— qualitative electromagnetics before any calculation: the three speeds of one
+ampere (drift vs signal), flux as an integral, ∇'s 1/m, curl as circulation
+density (shear vs vortex, walked numerically), the seven arrow rules with coax
+power flow solved in three sentences (∫E×H = VI to 7×10⁻¹² W), the barber-pole
+caveat, and the empty magnetic-current slot (duality, slot antennas, force-free
+fields). Every number reproducible by `tour_numbers.py`; no solver library used.
+Recommended when the prerequisite EM course is more than a couple of years old.
+
 | # | Lecture | Application anchors | Hands-on tool |
 |---|---------|--------------------|---------------|
 | 1 | Microwave systems panorama: dB, link budgets, the radar equation | comms links, radar preview | NumPy + first contact with scikit-rf |

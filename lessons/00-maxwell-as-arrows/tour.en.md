@@ -1,0 +1,364 @@
+# Chapter 0 — Maxwell as Arrows
+
+*Reading the field equations for direction and topology before calculating
+anything. Every number below can be recomputed: run `python tour_numbers.py all`
+and every table reappears; run `python tour_figures.py` and every figure
+regenerates. No solver library, no scikit-rf — this chapter is the tool you
+carry when the software isn't there, and the intuition the software cannot
+supply when it is.*
+
+**Who this is for.** You took an electromagnetics course once. You can compute a
+divergence and a curl if pressed, and you passed the exam. What that course
+often does not leave behind is the ability to *read* Maxwell's equations — to
+look at a coax, a microstrip, a slot, a loop, and know which way every field
+points and where the power goes, before and without calculation. Lectures 1–16
+assume that ability in small doses. This chapter builds it deliberately, through
+six questions, each answered by hand and then confirmed by a number.
+
+**The cast** (you will meet them in order, and they return all course):
+
+| | Question | Why it exists |
+|---|---|---|
+| 0.1 | how fast does current travel? | three speeds hide in one ampere — untangling them is transmission-line theory's admission ticket |
+| 0.2 | what is a "flux," really? | one integral template serves J, B, D, Poynting, and the radar equation |
+| 0.3 | why does curl H have units A/m²? | the ∇ family always spends a 1/m — auditing Maxwell by units |
+| 0.4 | what does curl actually measure? | circulation density — and two flows that break your intuition on purpose |
+| 0.5 | can arrows alone solve a problem? | coax power flow in three sentences; the barber pole that breaks perpendicularity |
+| 0.6 | what fills the empty slot in Faraday's law? | magnetic current: absent in nature, indispensable in antenna engineering |
+
+---
+
+## 0.1 Three speeds of one ampere
+
+Push 1 A through a 1 mm² copper wire and ask the naive question: *how fast is
+the current moving?* The honest answer is that three utterly different speeds
+are hiding in that sentence, and confusing them is the most common broken
+intuition in electrical engineering.
+
+**Speed one — the drift.** Copper donates one conduction electron per atom:
+n = 8.49×10²⁸ carriers per cubic meter. Current is I = n·q·v_d·A, so the net
+carrier velocity needed for our ampere is
+
+> v_d = I / (nqA) = **7.35×10⁻⁵ m/s = 0.0735 mm/s.**
+
+A snail outruns it. An electron entering your wire at the wall crosses one
+meter in **3.8 hours**.
+
+**Speed two — the thermal churn.** Each electron individually is *fast* —
+in copper the Fermi velocity is about 1.57×10⁶ m/s — but in random directions
+that cancel. The drift is a 10⁻¹⁰-level bias on top of this churn: an enormous
+crowd shuffling almost imperceptibly in one direction, moving a coulomb per
+second because the crowd is astronomically large.
+
+**Speed three — the signal.** Change the source, and how fast does the far end
+find out? On an RG-58-class line (L′ = 250 nH/m, C′ = 100 pF/m):
+
+> v = 1/√(L′C′) = **2.00×10⁸ m/s = 0.667 c.**
+
+The signal crosses the meter in 5.0 ns — **twelve to thirteen orders of
+magnitude** faster than the drift (measured ratio: 2.7×10¹²).
+
+![three speeds, and the wavefront that turns current on](figures/fig01_speeds.png)
+
+**How all three coexist — the mechanism, in three steps:**
+
+1. **The wire is already full.** Current does not require electrons to travel
+   from source to load; it requires the electron sea *everywhere along the
+   wire* to start creeping. A garden hose already full of water delivers at
+   the nozzle the moment you open the tap — a pressure wave, not your water,
+   crossed the hose.
+2. **What travels fast is the field, and it travels outside the copper.** A
+   thin rearrangement of surface charge races along the conductors,
+   establishing E at each point; that field-and-charge pattern is a guided
+   electromagnetic wave living in the *dielectric between* the conductors —
+   which is why v is set by the insulation (1/√(L′C′)), not by anything
+   about the metal.
+3. **The local response is effectively instantaneous.** The Drude relaxation
+   time in copper is τ = mσ/(nq²) = **2.5×10⁻¹⁴ s**; the drift settles within
+   ~5τ ≈ **125 femtoseconds** of the field's arrival. So drift switches on
+   *in sequence* down the line, at wave speed, with negligible local lag —
+   current "appears" at the far end at 0.667 c while nothing charged ever
+   exceeds a slow walk. Three claims, three speeds, no contradiction.
+
+The Drude calculation above is also the *why it matters*: from n and the
+measured conductivity σ = 5.96×10⁷ S/m, σ = nq²τ/m predicts a physically
+sensible scattering time — Ohm's law derived rather than decreed, and
+temperature dependence, skin effect (lecture 5), and conductor loss all fall
+out of that one formula.
+
+---
+
+## 0.2 Flux is an integral, not a motion
+
+The word "flux" (Latin *fluxus*, flow) suggests something streaming. Strip the
+suggestion away: for any vector field F, the **flux through a surface** is
+
+> Φ = ∫ F·dA
+
+— "how much of F crosses this surface, counting direction" — and F itself is
+then the **flux density** (the per-area integrand). The word names the *shape
+of the integral*, not any physical motion. Magnetic flux ∫B·dA threads a loop
+with no magnetic substance moving; the ammeter's plain I is secretly
+∫J·dA, the flux of current density through the wire's cross-section.
+
+Run the check by hand. A uniform J = 2 A/mm² crosses a 1 mm-radius disk:
+
+| disk orientation | flux (measured) |
+|---|---|
+| perpendicular | I = J·A = **6.2832 A** |
+| tilted 60° | I = J·A·cos 60° = **3.1416 A** (numerical surface integral: 3.1402) |
+
+Same field, same disk — the flux changed because flux measures
+*field-through-surface geometry*. Nothing moved differently.
+
+![flux counts field through a surface](figures/fig02_flux.png)
+
+**Why one word serves so many masters.** You will use this template weekly:
+
+| Quantity | Flux density (per m²) | Its flux (the integral) |
+|---|---|---|
+| charge transport | J (A/m²) | current I |
+| magnetic field | B (T = Wb/m²) | magnetic flux Φ — Faraday's law |
+| electric field | D (C/m²) | Gauss's enclosed-charge count |
+| power | Poynting S (W/m²) | power through a surface |
+| radar illumination | P_tG/4πR² (W/m²) | power intercepted by an RCS σ |
+
+That last row is lecture 1's radar equation: "power density at the target" is
+a power flux density, and "the target intercepts σ of it" is a flux integral
+over an effective area. Gauss and Friis, one grammar.
+
+**One naming collision to defuse now:** electromagnetics also has a genuine
+*surface current density* K (A/m) — current confined to a thin sheet, as in
+skin-effect idealizations and boundary conditions. Note the units: amperes per
+meter of sheet *width*, current *on* a surface. J (A/m²) is current *through*
+a surface. Different objects, and the reason nobody calls J a "surface
+density."
+
+---
+
+## 0.3 The ∇ family always spends a 1/m
+
+Every spatial derivative divides by a length. That single fact unit-audits all
+of Maxwell — an exercise worth doing exactly once, slowly:
+
+| Equation | Field units | Both sides |
+|---|---|---|
+| ∇·D = ρ | D: C/m² | → C/m³ — a volume charge density ✓ |
+| ∇·B = 0 | B: Wb/m² | → Wb/m³ = 0 — no magnetic charge anywhere ✓ |
+| ∇×H = J + ∂D/∂t | H: A/m | → A/m² = J ✓; and ∂D/∂t: (C/m²)/s = A/m² ✓ |
+| ∇×E = −∂B/∂t | E: V/m | → V/m²; and ∂B/∂t: (Wb/m²)/s = V/m² ✓ |
+
+Two things fall out of the audit. First, the *meaning* of the units: curl H
+having units of current density is not coincidence — Stokes' theorem says
+∮H·dl (amperes of circulation) equals the current threading the loop, so
+circulation *per area* must be amperes *per area*. The differential law is the
+integral law shrunk to a point, at the price of one 1/m. Second, the
+displacement current ∂D/∂t earns its seat by arithmetic: it is the only thing
+with J's units available to keep Ampère's law consistent where no charge flows
+— a capacitor gap, an antenna's near field, empty space. Maxwell's addition,
+found here by bookkeeping.
+
+---
+
+## 0.4 Curl is circulation density
+
+The ∇× notation looks like a cross product, and it tempts a wrong conclusion
+(that a field must be perpendicular to its curl — see 0.5). Here is what curl
+actually is, stated coordinate-free:
+
+> (∇×F)·n̂ = lim_{A→0} (1/A) ∮ F·dl
+
+Walk F around a tiny loop of area A with normal n̂; divide the circulation by
+the area; shrink. Curl answers exactly one question: *if I put an
+infinitesimal paddle wheel here, which axle orientation spins it fastest, and
+how hard per unit area?* The vector points along that axle (right-hand rule);
+the "cross" in the notation is bookkeeping for the antisymmetric part of the
+field's derivative, not a geometric cross of two arrows.
+
+Two flows, computed by actually walking loops (`tour_numbers.py 0.4`),
+calibrate the intuition better than any formula:
+
+**Shear flow v = (2y, 0) — dead-straight streamlines.**
+
+| loop half-size | circulation / area |
+|---|---|
+| 0.40 | −2.0000 |
+| 0.10 | −2.0000 |
+| 0.01 | −2.0000 |
+
+Nothing curves, yet the paddle wheel spins (top paddle pushed harder than the
+bottom): **curl = −2, everywhere.** Straight flow can curl.
+
+**Vortex flow v = φ̂/r — everything visibly orbiting.**
+
+| loop | circulation |
+|---|---|
+| off-axis, half-size 0.20 | /area = +2.1×10⁻⁸ ≈ 0 |
+| off-axis, half-size 0.05 | /area = +1.3×10⁻⁹ ≈ 0 |
+| enclosing the axis, R = 0.3 | 6.28319 = 2π |
+| enclosing the axis, R = 1.0 | 6.28319 = 2π — *any* R |
+
+Circling paths, yet **zero curl** away from the center — the paddle wheel
+*travels* in a circle without *spinning* about its own axle (inner paddle
+faster, outer slower, exact cancellation). All the circulation, 2π regardless
+of loop size, is concentrated on the axis.
+
+![shear spins, vortex doesn't](figures/fig03_curl.png)
+
+Now say what you just computed in electromagnetic words: v = φ̂/r **is the
+magnetic field of a straight wire** (H = I/2πr φ̂). Curl-free everywhere
+except the axis — *where the current is*. The constant 2π-per-enclosed-axis is
+Ampère's law ∮H·dl = I_enc, discovered numerically. Curl detects *local
+rotation*, and the wire's field rotates locally only inside the wire, only
+where J lives.
+
+---
+
+## 0.5 Arrows at work — and the day they need supervision
+
+Collect the reading rules, each one a Maxwell equation read qualitatively:
+
+| # | Rule | From |
+|---|---|---|
+| 1 | E/D lines start on +, end on −, never circulate on their own | ∇·D = ρ |
+| 2 | B/H lines never end — they close on themselves | ∇·B = 0 |
+| 3 | H wraps J (and ∂D/∂t), right-hand rule | ∇×H = J + ∂D/∂t |
+| 4 | E wraps −∂B/∂t, opposing the change (Lenz) | ∇×E = −∂B/∂t |
+| 5 | at a good conductor: E lands ⊥, H runs ∥, both die inside | boundary conditions |
+| + | the field shares the symmetry of its source | covariance |
+| + | S = E×H points where the power goes | Poynting |
+
+**The showcase: a coax, solved by arrows in three sentences.** E must run
+conductor-to-conductor (rule 1) — radial. H must wrap the center current
+(rule 3) — azimuthal. S = E×H — axial, *down the cable*: the power flows in
+the dielectric; the copper only steers it. Now let the numbers confirm what
+the arrows claimed (`tour_numbers.py 0.5`): for an air coax with a = 1 mm,
+b = 2.301 mm (Z₀ = 50.000 Ω) carrying V = 10 V, I = 0.2 A:
+
+> circuit theory: P = VI = 2.00000 W
+> field theory: ∫(E×H)·dA over the *dielectric* = **2.00000 W** (Δ = 7×10⁻¹² W)
+
+Every watt the circuit delivers travels through the insulation. The arrows
+were not a cartoon; they were the answer.
+
+![coax by arrows; Poynting profile](figures/fig04_coax.png)
+
+**The tilted loop: arrows are coordinate-proof.** A 5 cm, 1 A current loop has
+B = μ₀I/2R = 12.57 μT at its center, along its axis (the loop's rotational
+symmetry forbids any sideways component — rotate the loop about its axis and a
+sideways B would contradict the identical source). Tilt the loop 45° and the
+*components* change, (0, 0, 12.57) → (8.89, 0, 8.89) μT, but the arrow stays
+nailed to the loop's axis and |B| = 12.57 μT is untouched. Components are
+bookkeeping; the arrow is physics. If a calculation ever changes the field's
+*relationship to its source* when you rotate coordinates, the calculation is
+wrong.
+
+**And the supervision clause — the barber pole.** Rule 3 says H wraps the
+wire, and for a bare wire that makes H ⊥ J. Now slide the wire down the axis
+of a solenoid (`tour_numbers.py 0.5`):
+
+| solenoid field H_z | total-field pitch off axis |
+|---|---|
+| 0 | 90.0° (pure rings) |
+| 31.83 A/m (= H_φ at 5 mm) | 45.0° |
+| 95.49 A/m | 18.4° |
+
+The total field is a helix — a barber pole around the wire — while J never
+moved and ∇×H never changed (the solenoid's interior field is curl-free in
+this region). **Curl is linear: adding a curl-free field rotates H without
+touching its curl.** So "the field is perpendicular to its curl" was never a
+theorem, only a habit of bare-wire geometry; and arrow-reading carries a
+discipline: *inventory every source and boundary before trusting a
+direction* (Helmholtz: a field is fixed by its curl **and** its divergence
+**and** its boundaries — not by curl alone).
+
+![the barber pole: H rotates, curl H stays](figures/fig05_barberpole.png)
+
+**Where arrows end and arithmetic begins.** Magnitudes, always — no sketch
+produces 92.45 dB. Low-symmetry superpositions — the sketch's *character*
+survives, the exact vector needs the integral. And anything phase-sensitive —
+two correctly-drawn arrows can still cancel; every null in lecture 13's array
+factor is exactly that. Sketch first, to catch wrong topologies; then
+calculate, because the customer buys decibels, not arrows.
+
+---
+
+## 0.6 The empty slot — magnetic current
+
+Set the two curl equations side by side and stare at the asymmetry:
+
+> ∇×H = **J** + ∂D/∂t
+> ∇×E = **?** − ∂B/∂t
+
+Perfect symmetry would put a *magnetic current density* M in the slot — a flow
+of magnetic charge that E would ring exactly as H rings J, whose charges would
+terminate B lines (∇·B = ρ_m). The equations would then be fully dual under
+E→H, H→−E, J↔M, ε↔μ.
+
+**Nature leaves the slot empty.** No isolated magnetic charge has ever been
+observed: every magnet cut yields two smaller dipoles, ∇·B = 0 holds in every
+measurement, and dedicated monopole searches have returned nothing. (Dirac's
+1931 consolation prize: if even one monopole existed anywhere, quantum
+mechanics would force electric charge to be quantized — which it is.) So in
+physics, ∇×E = −∂B/∂t and E circulates around *change*, not around any
+current.
+
+**Engineering rents the slot anyway.** The equivalence principle of antenna
+theory replaces the fields in an aperture by fictitious sheet currents —
+electric J_s = n̂×H and **magnetic M_s = −n̂×E** — that reproduce the exterior
+fields exactly. No monopoles are claimed; M is bookkeeping. The payoff is the
+whole aperture-antenna family: a **slot antenna** (E across a slit in metal)
+is analyzed as a magnetic dipole current along the slot, dual by Babinet's
+principle to the complementary wire dipole — the design method behind the
+waveguide slot arrays on real radars. A small current loop, seen from afar,
+*is* a short magnetic-current element; that is why it's called a magnetic
+dipole.
+
+**And nature, while owning no magnetic current, does build the field that
+would carry one.** Ask for a field everywhere *parallel* to its own curl —
+∇×B = αB, a **force-free (Beltrami) field**, the ultimate rebuke to
+"perpendicular" intuition. The cylindrical solution is the Lundquist flux
+rope, B = (0, J₁(αr), J₀(αr)) in Bessel functions, and it can be checked by
+finite differences (`tour_numbers.py 0.6`): with α = 1,
+
+> max |∇×B − B| = **1.0×10⁻⁴** (grid resolution — the identity is exact)
+
+| radius r | field pitch from axis |
+|---|---|
+| 0 (core) | 0.0° — purely axial |
+| 1.0 | 29.9° |
+| 2.0 | 68.8° |
+| 2.404 (rim) | 90.0° — purely azimuthal |
+
+The current flows *along* the spiraling field the whole way (J ∥ B, so the
+magnetic force J×B vanishes — hence "force-free"). This is not a curiosity:
+turbulent laboratory plasmas relax spontaneously into this state (Taylor
+relaxation, measured in spheromaks and reversed-field pinches), and when a
+coronal mass ejection sweeps past a spacecraft, the magnetometer trace fits
+the Lundquist rope, mission after mission.
+
+![the force-free rope: curl B parallel to B](figures/fig06_lundquist.png)
+
+---
+
+## What to carry into lecture 1
+
+1. **Three speeds:** fields propagate (fast, set by the dielectric), drift
+   responds (locally instant, glacially slow) — transmission lines track the
+   wave, circuit theory tracks the crowd. λ/10 is where the difference starts
+   to matter, and lecture 1 computes that line.
+2. **Flux = ∫F·dA**, one template from Gauss to the radar equation. Nothing
+   flows unless the field is a current.
+3. **∇ costs 1/m**; unit-audit any field equation before trusting it.
+4. **Curl = circulation density** — paddle wheel, not curved paths; Ampère's
+   2π found by walking loops.
+5. **The seven arrow rules** solve coax power flow in three sentences and are
+   how every mode picture in lectures 2–13 was drawn — under the Helmholtz
+   discipline: inventory all sources first (the barber pole is waiting for
+   you if you don't).
+6. **The empty slot:** E rings change, not current; magnetic current is
+   nature's omission and the antenna engineer's favorite fiction — you will
+   meet M again at every slot and aperture in lecture 13's references.
+
+Sketch first. Then calculate. The course ahead does both, in that order,
+every week.
