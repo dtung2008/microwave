@@ -181,6 +181,32 @@ def fig06():
     save(fig, "fig06_lundquist.png")
 
 
+# --- fig07: divergence — the point-charge field and its two boxes -----------
+def fig07():
+    fig, ax = plt.subplots(figsize=(7.2, 5.4))
+    g = np.linspace(-4, 4, 21)
+    X, Y = np.meshgrid(g, g)
+    r2 = X**2 + Y**2 + 1e-9
+    mask = r2 > 0.5
+    ax.quiver(X[mask], Y[mask], (X / r2**1.0)[mask], (Y / r2**1.0)[mask],
+              color="#5b9bd5", scale=14, width=0.004)
+    for (cx, cy), half, color, label in [((0, 0), 1.0, "#c0504d",
+                                          "encloses charge: flux = 4π"),
+                                         ((0, 0), 2.6, "#c0504d", None),
+                                         ((3.0, 0), 0.6, "#4a7c3f",
+                                          "no charge inside: flux = 0")]:
+        ax.plot([cx - half, cx + half, cx + half, cx - half, cx - half],
+                [cy - half, cy - half, cy + half, cy + half, cy - half],
+                color=color, lw=2, label=label)
+    ax.scatter([0], [0], s=70, c="k", zorder=5)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.legend(loc="lower left", fontsize=9)
+    ax.set_title("E = r̂/r²: maximally 'diverging' to the eye, zero divergence\n"
+                 "off the charge — every enclosing box nets 4π, any size")
+    save(fig, "fig07_divergence.png")
+
+
 if __name__ == "__main__":
-    for f in (fig01, fig02, fig03, fig04, fig05, fig06):
+    for f in (fig01, fig02, fig03, fig04, fig05, fig06, fig07):
         f()

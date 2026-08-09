@@ -20,10 +20,10 @@ questions, each answered by hand and then confirmed by a number.
 
 | | Question | Why it exists |
 |---|---|---|
-| 0.0 | the four equations, stated | the protagonists — differential and integral forms, sources on the right, behavior on the left |
+| 0.0 | the four equations, stated | the protagonists — differential and integral forms, units audited, sources on the right, behavior on the left |
 | 0.1 | how fast does current travel? | three speeds hide in one ampere — untangling them is transmission-line theory's admission ticket |
 | 0.2 | what is a "flux," really? | one integral template serves J, B, D, Poynting, and the radar equation |
-| 0.3 | why does curl H have units A/m²? | the ∇ family always spends a 1/m — auditing Maxwell by units |
+| 0.3 | what does divergence measure? | outflow density — and the field that looks maximally diverging but isn't |
 | 0.4 | what does curl actually measure? | circulation density — and two flows that break your intuition on purpose |
 | 0.5 | can arrows alone solve a problem? | coax power flow in three sentences; the barber pole that breaks perpendicularity |
 | 0.6 | what fills the empty slot in Faraday's law? | magnetic current: absent in nature, indispensable in antenna engineering |
@@ -44,7 +44,7 @@ each with its plain-language reading, which the rest of the tour unpacks:
 | Faraday | ∇×E = −∂B/∂t | ∮ E·dl = −dΦ_B/dt | E circulates around *changing* magnetic flux, opposing it |
 | Ampère–Maxwell | ∇×H = J + ∂D/∂t | ∮ H·dl = I_enc + dΦ_D/dt | H circulates around current — real (J) or displacement (∂D/∂t) |
 
-**The cast of symbols**, with units (audited in §0.3):
+**The cast of symbols**, with units:
 
 | Symbol | Name | Units |
 |---|---|---|
@@ -61,14 +61,30 @@ deliberately material-blind, and ε, μ, σ are where the substance (substrate,
 ferrite, copper) plugs in. Lecture 5 lives in ε; lecture 5's loss lives in σ;
 §0.1's Drude model is where J = σE comes *from*.
 
+**Audit the units before believing anything** — every spatial derivative (∇)
+divides by one meter, and both sides of each equation must agree:
+
+| Equation | Field units | Both sides |
+|---|---|---|
+| ∇·D = ρ | D: C/m² | → C/m³ — a volume charge density ✓ |
+| ∇·B = 0 | B: Wb/m² | → Wb/m³ = 0 ✓ |
+| ∇×H = J + ∂D/∂t | H: A/m | → A/m² = J ✓; ∂D/∂t: (C/m²)/s = A/m² ✓ |
+| ∇×E = −∂B/∂t | E: V/m | → V/m²; ∂B/∂t: (Wb/m²)/s = V/m² ✓ |
+
+The audit is trivial, but its two by-products are not: curl H having J's units
+is Stokes' theorem in disguise (circulation per area must be amperes per
+area — §0.4 makes this exact), and ∂D/∂t is the *only* object with J's units
+available to keep Ampère's law consistent where no charge flows — Maxwell's
+displacement current, found by bookkeeping.
+
 Three observations before we use them, each of which becomes a section:
 
 1. **The two columns say the same thing at different sizes.** The integral
    forms count totals over loops and surfaces you choose; the differential
-   forms are those totals shrunk to a point, divided by area or volume — which
-   is why every ∇ costs a 1/m (§0.3) and why curl is circulation-per-area
-   (§0.4). Stokes and Gauss (the divergence theorem) are the two elevators
-   between the columns.
+   forms are those totals shrunk to a point, divided by volume or area —
+   divergence is flux-per-volume (§0.3), curl is circulation-per-area
+   (§0.4). Gauss's divergence theorem and Stokes' theorem are the two
+   elevators between the columns.
 2. **The right-hand sides are the sources; the left-hand sides are the field
    behavior they compel.** Charge makes field lines end; current (or changing
    D) makes them wrap; changing B makes E wrap the other way; and nothing
@@ -137,11 +153,10 @@ magnitude** faster than the drift (measured ratio: 2.7×10¹²).
    current "appears" at the far end at 0.667 c while nothing charged ever
    exceeds a slow walk. Three claims, three speeds, no contradiction.
 
-The Drude calculation above is also the *why it matters*: from n and the
-measured conductivity σ = 5.96×10⁷ S/m, σ = nq²τ/m predicts a physically
-sensible scattering time — Ohm's law derived rather than decreed, and
-temperature dependence, skin effect (lecture 5), and conductor loss all fall
-out of that one formula.
+*(The τ above comes from the Drude model, σ = nq²τ/m — the microscopic origin
+of Ohm's law, and of lecture 5's skin effect. Enrichment, not prerequisite:
+the course needs only the conclusion that the local response is instant and
+the traveling thing is the wave.)*
 
 ---
 
@@ -193,27 +208,55 @@ density."
 
 ---
 
-## 0.3 The ∇ family always spends a 1/m
+## 0.3 Divergence is flux density
 
-Every spatial derivative divides by a length. That single fact unit-audits all
-of Maxwell — an exercise worth doing exactly once, slowly:
+Section 0.2 defined flux through a surface you choose. Close the surface —
+make it a box, a balloon, any envelope with an inside — and ask for the *net
+outward* flux. Divergence is that quantity shrunk to a point:
 
-| Equation | Field units | Both sides |
-|---|---|---|
-| ∇·D = ρ | D: C/m² | → C/m³ — a volume charge density ✓ |
-| ∇·B = 0 | B: Wb/m² | → Wb/m³ = 0 — no magnetic charge anywhere ✓ |
-| ∇×H = J + ∂D/∂t | H: A/m | → A/m² = J ✓; and ∂D/∂t: (C/m²)/s = A/m² ✓ |
-| ∇×E = −∂B/∂t | E: V/m | → V/m²; and ∂B/∂t: (Wb/m²)/s = V/m² ✓ |
+> ∇·F = lim_{V→0} (1/V) ∯ F·dA
 
-Two things fall out of the audit. First, the *meaning* of the units: curl H
-having units of current density is not coincidence — Stokes' theorem says
-∮H·dl (amperes of circulation) equals the current threading the loop, so
-circulation *per area* must be amperes *per area*. The differential law is the
-integral law shrunk to a point, at the price of one 1/m. Second, the
-displacement current ∂D/∂t earns its seat by arithmetic: it is the only thing
-with J's units available to keep Ampère's law consistent where no charge flows
-— a capacitor gap, an antenna's near field, empty space. Maxwell's addition,
-found here by bookkeeping.
+— **outflow per unit volume**: the source detector. Where §0.4's paddle wheel
+asks "does the field *spin* here?", divergence asks "does a small balloon
+here *inflate* — is field being born at this point?" Positive divergence:
+lines are born here (a source). Negative: they die here (a sink). Zero:
+whatever enters, leaves.
+
+Now the demonstration that calibrates the eye — the exact dual of §0.4's
+vortex. Take the most diverging-*looking* field in physics, a point charge's
+E = r̂/r², and integrate the flux through closed boxes numerically
+(`tour_numbers.py 0.3`):
+
+| closed surface | net outward flux |
+|---|---|
+| cube at the charge, side 1 | **12.5664** = 4π |
+| cube at the charge, side 4 | **12.5664** = 4π — *any* size |
+| cube at (3, 0, 0), charge outside | **−0.0000** |
+| shrinking box at (2, 0, 0): flux/volume | −3.5×10⁻⁸ → 0 |
+
+![the point-charge field and its two boxes](figures/fig07_divergence.png)
+
+Read the table twice. The fan of arrows *looks* like it diverges everywhere —
+yet away from the charge the divergence is exactly zero: the geometric
+spreading of the lines is cancelled, precisely, by the 1/r² weakening of the
+field. Every line that enters a charge-free box also leaves it. All 4π of the
+outflow is concentrated *at the charge* — and the enclosing-box flux is 4π
+regardless of the box's size or shape. You have just discovered Gauss's law
+numerically: ∯D·dA = Q_enc, the integral twin of ∇·D = ρ.
+
+The pairing to memorize, because §0.4 is about to complete it:
+
+- **Divergence** = flux per volume → sources where field lines *end*
+  (charge, for D). The point-charge field: div-free off the source, 4π
+  concentrated on it.
+- **Curl** = circulation per area → sources field lines *wrap around*
+  (current, for H). The wire's field, §0.4: curl-free off the axis, 2π
+  concentrated on it.
+
+And the second Gauss law, ∇·B = 0, now reads as physics rather than notation:
+*no balloon anywhere, of any size, ever nets magnetic outflow* — B lines have
+no birthplace, so they close on themselves. Which is §0.6's empty slot,
+stated as a divergence.
 
 ---
 
@@ -406,14 +449,16 @@ the Lundquist rope, mission after mission.
    to matter, and lecture 1 computes that line.
 2. **Flux = ∫F·dA**, one template from Gauss to the radar equation. Nothing
    flows unless the field is a current.
-3. **∇ costs 1/m**; unit-audit any field equation before trusting it.
-4. **Curl = circulation density** — paddle wheel, not curved paths; Ampère's
-   2π found by walking loops.
-5. **The seven arrow rules** solve coax power flow in three sentences and are
+3. **Divergence = flux per volume, curl = circulation per area** — the balloon
+   and the paddle wheel, the two source-detectors: 4π concentrated at the
+   charge (Gauss), 2π concentrated on the wire (Ampère), both found
+   numerically, both zero everywhere else however diverging or circling the
+   field *looks*. (And unit-audit any field equation — ∇ always costs 1/m.)
+4. **The seven arrow rules** solve coax power flow in three sentences and are
    how every mode picture in lectures 2–13 was drawn — under the Helmholtz
    discipline: inventory all sources first (the barber pole is waiting for
    you if you don't).
-6. **The empty slot:** E rings change, not current; magnetic current is
+5. **The empty slot:** E rings change, not current; magnetic current is
    nature's omission and the antenna engineer's favorite fiction — you will
    meet M again at every slot and aperture in lecture 13's references.
 

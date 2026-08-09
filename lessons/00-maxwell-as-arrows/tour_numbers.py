@@ -65,16 +65,43 @@ def s02():
 
 
 def s03():
-    print("== 0.3 the nabla family always spends 1/m " + "=" * 23)
-    rows = [
-        ("div D = rho",        "D: C/m^2",  "-> C/m^3 = charge density"),
-        ("div B = 0",          "B: Wb/m^2", "-> Wb/m^3 = 0 (no monopoles)"),
-        ("curl H = J + dD/dt", "H: A/m",    "-> A/m^2 = J;  dD/dt: C/m^2/s = A/m^2"),
-        ("curl E = -dB/dt",    "E: V/m",    "-> V/m^2;  dB/dt: Wb/m^2/s = V/m^2"),
-    ]
-    for eq, unit_in, unit_out in rows:
-        print(f"  {eq:22s} {unit_in:12s} {unit_out}")
-    print("every spatial derivative divides by one meter; both sides agree.")
+    print("== 0.3 divergence is flux density " + "=" * 31)
+    # point-charge field E = r_hat / r^2  (units: q/4pi*eps0 = 1)
+    def flux_through_cube(center, half, n=500):
+        """Net outward flux of r_hat/r^2 through a cube's six faces."""
+        c = np.asarray(center, float)
+        u = np.linspace(-half, half, n, endpoint=False) + half / n
+        U, V = np.meshgrid(u, u)
+        dA = (2 * half / n) ** 2
+        total = 0.0
+        for axis in range(3):
+            for sign in (+1.0, -1.0):
+                pts = np.zeros((3, n, n))
+                others = [a for a in range(3) if a != axis]
+                pts[axis] = c[axis] + sign * half
+                pts[others[0]] = c[others[0]] + U
+                pts[others[1]] = c[others[1]] + V
+                r = np.sqrt((pts**2).sum(0))
+                En = pts[axis] / r**3          # (r_hat/r^2) . axis_hat
+                total += sign * np.sum(En) * dA
+        return total
+
+    print("field of a point charge at the origin, E = r_hat/r^2:")
+    for center, half, label in [((0, 0, 0), 0.5, "enclosing, side 1"),
+                                ((0, 0, 0), 2.0, "enclosing, side 4"),
+                                ((3, 0, 0), 0.5, "NOT enclosing")]:
+        f = flux_through_cube(center, half)
+        print(f"  cube at {center}, {label:18s}: net flux = {f:8.4f}"
+              f"   (4*pi = {4*np.pi:.4f})")
+    # divergence as the limit flux/volume, away from the charge
+    print("divergence = flux/volume as the box shrinks, at point (2,0,0):")
+    for half in (0.2, 0.05):
+        f = flux_through_cube((2, 0, 0), half)
+        print(f"  box half-size {half:4.2f}: flux/volume = "
+              f"{f/(2*half)**3:+.2e}   (-> 0: no source here)")
+    print("the most diverging-LOOKING field in physics has zero divergence")
+    print("everywhere except the charge: spreading is exactly cancelled by")
+    print("1/r^2 weakening. All 4*pi of it lives AT the charge -> Gauss.")
 
 
 def s04():

@@ -333,3 +333,12 @@ barber-pole/Helmholtz caveat, magnetic current & force-free fields. Follows the
 optimizations `00-wind-tour` precedent: essay + reproducibility scripts +
 committed figures; no lab, no slides, English-only, numpy(+scipy Bessel) only.
 Syllabus preamble updated with the Chapter 0 pointer.
+
+Revision 2026-08-09 (user review of Chapter 0): §0.3 "units audit" judged too
+thin for a section — table folded into §0.0 (equations now stated with units
+in one place); §0.1 Drude/Ohm enrichment paragraph demoted to a footnote (the
+course needs the conclusion, not the derivation); NEW §0.3 "Divergence is flux
+density" added as §0.4's exact dual — point-charge field: enclosing-box flux
+4π at any size, −0.0000 non-enclosing, flux/volume → 0 off the charge (Gauss's
+law found numerically, mirroring §0.4's Ampère 2π); fig07_divergence.png added.
+Numbers script re-verified deterministic; all 7 figures regenerate.
