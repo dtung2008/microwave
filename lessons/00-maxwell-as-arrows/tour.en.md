@@ -171,6 +171,18 @@ magnitude** faster than the drift (measured ratio: 2.7×10¹²).
    current "appears" at the far end at 0.667 c while nothing charged ever
    exceeds a slow walk. Three claims, three speeds, no contradiction.
 
+**Where these numbers return** — this section is the course's first EM wave,
+undeclared: the third speed *is* lecture 2's v = 1/√(L′C′) = c/√ε_eff, the
+phase velocity behind every guided wavelength, stub length, and electrical
+length in the course; and the femtosecond τ is the license for the whole
+good-conductor framework — at 10 GHz one RF period is ~4000τ, so the electron
+sea tracks the field as if massless, J = σE holds with the DC σ, and the
+conductor boundary conditions (§0.5, rule 5) stand at every microwave
+frequency, a bargain that expires only near optical frequencies where ω
+approaches 1/τ. The drift number itself never returns: its job was
+demolition — killing the electrons-carry-the-signal model so the other two
+numbers could be believed.
+
 *(The τ above comes from the Drude model, σ = nq²τ/m — the microscopic origin
 of Ohm's law, and of lecture 5's skin effect. Enrichment, not prerequisite:
 the course needs only the conclusion that the local response is instant and
